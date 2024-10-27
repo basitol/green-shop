@@ -308,6 +308,219 @@
 //   }
 // };
 
+// import {Request, Response, NextFunction, RequestHandler} from 'express';
+// import bcrypt from 'bcryptjs';
+// import jwt from 'jsonwebtoken';
+// import User from '../models/User';
+
+// export interface AuthenticatedRequest extends Request {
+//   user?: {
+//     _id: string;
+//     id: string;
+//     role: string;
+//   };
+// }
+
+// export type AuthenticatedRequestHandler = (
+//   req: AuthenticatedRequest,
+//   res: Response,
+//   next: NextFunction,
+// ) => Promise<void> | void;
+
+// export const register: RequestHandler = async (
+//   req: Request,
+//   res: Response,
+//   next: NextFunction,
+// ) => {
+//   try {
+//     const {username, email, password, role, adminCreationToken} = req.body;
+
+//     if (!username || !email || !password) {
+//       res.status(400).json({message: 'All fields are required'});
+//       return;
+//     }
+
+//     // Check if user already exists
+//     const existingUser = await User.findOne({$or: [{email}, {username}]});
+//     if (existingUser) {
+//       res.status(400).json({message: 'User already exists'});
+//       return;
+//     }
+
+//     // Hash password
+//     const salt = await bcrypt.genSalt(10);
+//     const hashedPassword = await bcrypt.hash(password, salt);
+
+//     let userRole = 'user';
+
+//     // Check if attempting to create an admin
+//     if (role === 'admin') {
+//       // Verify admin creation token
+//       if (!adminCreationToken) {
+//         res.status(403).json({message: 'Admin creation token required'});
+//         return;
+//       }
+//       try {
+//         jwt.verify(
+//           adminCreationToken,
+//           process.env.ADMIN_CREATION_SECRET as string,
+//         );
+//         userRole = 'admin';
+//       } catch (error) {
+//         res.status(403).json({message: 'Invalid admin creation token'});
+//         return;
+//       }
+//     }
+
+//     // Create new user
+//     const newUser = new User({
+//       username,
+//       email,
+//       password: hashedPassword,
+//       role: userRole,
+//     });
+
+//     await newUser.save();
+
+//     res.status(201).json({message: 'User registered successfully'});
+//   } catch (error) {
+//     console.error('Registration error:', error);
+//     next(error);
+//   }
+// };
+
+// export const login: RequestHandler = async (
+//   req: Request,
+//   res: Response,
+//   next: NextFunction,
+// ) => {
+//   try {
+//     const {email, password} = req.body;
+
+//     if (!email || !password) {
+//       res.status(400).json({message: 'Email and password are required'});
+//       return;
+//     }
+
+//     // Check if user exists
+//     const user = await User.findOne({email});
+//     if (!user) {
+//       res.status(400).json({message: 'Invalid credentials'});
+//       return;
+//     }
+
+//     // Check password
+//     const isMatch = await bcrypt.compare(password, user.password);
+//     if (!isMatch) {
+//       res.status(400).json({message: 'Invalid credentials'});
+//       return;
+//     }
+
+//     // Generate JWT
+//     const token = jwt.sign(
+//       {id: user._id, role: user.role},
+//       process.env.JWT_SECRET as string,
+//       {expiresIn: '1d'},
+//     );
+
+//     res.json({
+//       token,
+//       user: {
+//         id: user._id,
+//         username: user.username,
+//         email: user.email,
+//         role: user.role,
+//       },
+//     });
+//   } catch (error) {
+//     console.error('Login error:', error);
+//     next(error);
+//   }
+// };
+
+// export const generateAdminCreationToken: AuthenticatedRequestHandler = async (
+//   req,
+//   res,
+//   next,
+// ) => {
+//   try {
+//     if (req.user?.role !== 'admin') {
+//       res.status(403).json({message: 'Access denied. Admin only.'});
+//       return;
+//     }
+
+//     const token = jwt.sign(
+//       {purpose: 'admin_creation'},
+//       process.env.ADMIN_CREATION_SECRET as string,
+//       {expiresIn: '1h'},
+//     );
+
+//     res.json({adminCreationToken: token});
+//   } catch (error) {
+//     console.error('Admin creation token generation error:', error);
+//     next(error);
+//   }
+// };
+
+// export const getProfile: AuthenticatedRequestHandler = async (
+//   req,
+//   res,
+//   next,
+// ) => {
+//   try {
+//     if (!req.user?.id) {
+//       res.status(401).json({message: 'Not authenticated'});
+//       return;
+//     }
+
+//     const user = await User.findById(req.user._id).select('-password');
+//     if (!user) {
+//       res.status(404).json({message: 'User not found'});
+//       return;
+//     }
+//     res.json(user);
+//   } catch (error) {
+//     console.error('Get profile error:', error);
+//     next(error);
+//   }
+// };
+
+// export const updateProfile: AuthenticatedRequestHandler = async (
+//   req,
+//   res,
+//   next,
+// ) => {
+//   try {
+//     if (!req.user?.id) {
+//       res.status(401).json({message: 'Not authenticated'});
+//       return;
+//     }
+
+//     const {username, email} = req.body;
+
+//     if (!username && !email) {
+//       res.status(400).json({message: 'No update data provided'});
+//       return;
+//     }
+
+//     const user = await User.findByIdAndUpdate(
+//       req.user._id,
+//       {username, email},
+//       {new: true, runValidators: true},
+//     ).select('-password');
+
+//     if (!user) {
+//       res.status(404).json({message: 'User not found'});
+//       return;
+//     }
+
+//     res.json(user);
+//   } catch (error) {
+//     console.error('Update profile error:', error);
+//     next(error);
+//   }
+// };
+
 import {Request, Response, NextFunction, RequestHandler} from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -327,37 +540,44 @@ export type AuthenticatedRequestHandler = (
   next: NextFunction,
 ) => Promise<void> | void;
 
+interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  data?: T;
+  error?: string;
+}
+
+// Register a new user
 export const register: RequestHandler = async (
   req: Request,
-  res: Response,
+  res: Response<ApiResponse<null>>,
   next: NextFunction,
 ) => {
   try {
     const {username, email, password, role, adminCreationToken} = req.body;
 
     if (!username || !email || !password) {
-      res.status(400).json({message: 'All fields are required'});
+      res
+        .status(400)
+        .json({success: false, message: 'All fields are required'});
       return;
     }
 
-    // Check if user already exists
     const existingUser = await User.findOne({$or: [{email}, {username}]});
     if (existingUser) {
-      res.status(400).json({message: 'User already exists'});
+      res.status(400).json({success: false, message: 'User already exists'});
       return;
     }
 
-    // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
     let userRole = 'user';
-
-    // Check if attempting to create an admin
     if (role === 'admin') {
-      // Verify admin creation token
       if (!adminCreationToken) {
-        res.status(403).json({message: 'Admin creation token required'});
+        res
+          .status(403)
+          .json({success: false, message: 'Admin creation token required'});
         return;
       }
       try {
@@ -367,12 +587,13 @@ export const register: RequestHandler = async (
         );
         userRole = 'admin';
       } catch (error) {
-        res.status(403).json({message: 'Invalid admin creation token'});
+        res
+          .status(403)
+          .json({success: false, message: 'Invalid admin creation token'});
         return;
       }
     }
 
-    // Create new user
     const newUser = new User({
       username,
       email,
@@ -382,41 +603,53 @@ export const register: RequestHandler = async (
 
     await newUser.save();
 
-    res.status(201).json({message: 'User registered successfully'});
+    res
+      .status(201)
+      .json({success: true, message: 'User registered successfully'});
   } catch (error) {
     console.error('Registration error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Registration failed',
+      error: (error as Error).message,
+    });
     next(error);
   }
 };
 
+// Login a user
 export const login: RequestHandler = async (
   req: Request,
-  res: Response,
+  res: Response<
+    ApiResponse<{
+      token: string;
+      user: {id: string; username: string; email: string; role: string};
+    }>
+  >,
   next: NextFunction,
 ) => {
   try {
     const {email, password} = req.body;
 
     if (!email || !password) {
-      res.status(400).json({message: 'Email and password are required'});
+      res
+        .status(400)
+        .json({success: false, message: 'Email and password are required'});
       return;
     }
 
-    // Check if user exists
     const user = await User.findOne({email});
     if (!user) {
-      res.status(400).json({message: 'Invalid credentials'});
+      res.status(400).json({success: false, message: 'Invalid credentials'});
       return;
     }
 
-    // Check password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      res.status(400).json({message: 'Invalid credentials'});
+      res.status(400).json({success: false, message: 'Invalid credentials'});
       return;
     }
 
-    // Generate JWT
     const token = jwt.sign(
       {id: user._id, role: user.role},
       process.env.JWT_SECRET as string,
@@ -424,20 +657,30 @@ export const login: RequestHandler = async (
     );
 
     res.json({
-      token,
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
+      success: true,
+      message: 'Login successful',
+      data: {
+        token,
+        user: {
+          id: user._id,
+          username: user.username,
+          email: user.email,
+          role: user.role,
+        },
       },
     });
   } catch (error) {
     console.error('Login error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Login failed',
+      error: (error as Error).message,
+    });
     next(error);
   }
 };
 
+// Generate admin creation token
 export const generateAdminCreationToken: AuthenticatedRequestHandler = async (
   req,
   res,
@@ -445,7 +688,9 @@ export const generateAdminCreationToken: AuthenticatedRequestHandler = async (
 ) => {
   try {
     if (req.user?.role !== 'admin') {
-      res.status(403).json({message: 'Access denied. Admin only.'});
+      res
+        .status(403)
+        .json({success: false, message: 'Access denied. Admin only.'});
       return;
     }
 
@@ -455,13 +700,23 @@ export const generateAdminCreationToken: AuthenticatedRequestHandler = async (
       {expiresIn: '1h'},
     );
 
-    res.json({adminCreationToken: token});
+    res.json({
+      success: true,
+      message: 'Admin creation token generated',
+      data: {adminCreationToken: token},
+    });
   } catch (error) {
     console.error('Admin creation token generation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate admin creation token',
+      error: (error as Error).message,
+    });
     next(error);
   }
 };
 
+// Get user profile
 export const getProfile: AuthenticatedRequestHandler = async (
   req,
   res,
@@ -469,22 +724,32 @@ export const getProfile: AuthenticatedRequestHandler = async (
 ) => {
   try {
     if (!req.user?.id) {
-      res.status(401).json({message: 'Not authenticated'});
+      res.status(401).json({success: false, message: 'Not authenticated'});
       return;
     }
 
     const user = await User.findById(req.user._id).select('-password');
     if (!user) {
-      res.status(404).json({message: 'User not found'});
+      res.status(404).json({success: false, message: 'User not found'});
       return;
     }
-    res.json(user);
+    res.json({
+      success: true,
+      message: 'Profile retrieved successfully',
+      data: user,
+    });
   } catch (error) {
     console.error('Get profile error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve profile',
+      error: (error as Error).message,
+    });
     next(error);
   }
 };
 
+// Update user profile
 export const updateProfile: AuthenticatedRequestHandler = async (
   req,
   res,
@@ -492,14 +757,16 @@ export const updateProfile: AuthenticatedRequestHandler = async (
 ) => {
   try {
     if (!req.user?.id) {
-      res.status(401).json({message: 'Not authenticated'});
+      res.status(401).json({success: false, message: 'Not authenticated'});
       return;
     }
 
     const {username, email} = req.body;
 
     if (!username && !email) {
-      res.status(400).json({message: 'No update data provided'});
+      res
+        .status(400)
+        .json({success: false, message: 'No update data provided'});
       return;
     }
 
@@ -510,13 +777,22 @@ export const updateProfile: AuthenticatedRequestHandler = async (
     ).select('-password');
 
     if (!user) {
-      res.status(404).json({message: 'User not found'});
+      res.status(404).json({success: false, message: 'User not found'});
       return;
     }
 
-    res.json(user);
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: user,
+    });
   } catch (error) {
     console.error('Update profile error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update profile',
+      error: (error as Error).message,
+    });
     next(error);
   }
 };

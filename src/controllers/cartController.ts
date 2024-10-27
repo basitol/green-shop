@@ -1,16 +1,189 @@
+// import {Request, Response, NextFunction, RequestHandler} from 'express';
+// import Cart from '../models/Cart';
+// import Product from '../models/Product';
+
+// // Get cart for a specific user
+// export const getCart: RequestHandler = async (
+//   req: Request,
+//   res: Response,
+//   next: NextFunction,
+// ) => {
+//   try {
+//     if (!req.user || !req.user._id) {
+//       res.status(401).json({message: 'Unauthorized'});
+//       return;
+//     }
+
+//     const cart = await Cart.findOne({user: req.user._id}).populate(
+//       'items.product',
+//     );
+//     if (!cart) {
+//       res.status(404).json({message: 'Cart not found'});
+//       return;
+//     }
+//     res.json(cart);
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
+// // Add item to cart
+// export const addToCart: RequestHandler = async (
+//   req: Request,
+//   res: Response,
+//   next: NextFunction,
+// ) => {
+//   try {
+//     if (!req.user || !req.user._id) {
+//       res.status(401).json({message: 'Unauthorized'});
+//       return;
+//     }
+
+//     const {productId, quantity} = req.body;
+//     let cart = await Cart.findOne({user: req.user._id});
+
+//     if (!cart) {
+//       cart = new Cart({user: req.user._id, items: []});
+//     }
+
+//     const existingItem = cart.items.find(
+//       item => item.product.toString() === productId,
+//     );
+
+//     if (existingItem) {
+//       existingItem.quantity += quantity;
+//     } else {
+//       const product = await Product.findById(productId); // Fetch product to get the price
+//       if (!product) {
+//         res.status(404).json({message: 'Product not found'}); // Handle product not found
+//         return;
+//       }
+//       cart.items.push({product: productId, quantity, price: product.price}); // Include price
+//     }
+
+//     await cart.save();
+//     res.json(cart);
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
+// // Update item quantity in the cart
+// export const updateCartItem: RequestHandler = async (
+//   req: Request,
+//   res: Response,
+//   next: NextFunction,
+// ): Promise<void> => {
+//   const {productId, quantity} = req.body;
+
+//   try {
+//     if (!req.user || !req.user._id) {
+//       res.status(401).json({message: 'User not authenticated'});
+//       return;
+//     }
+//     const cart = await Cart.findOne({user: req.user._id});
+//     if (!cart) {
+//       res.status(404).json({message: 'Cart not found'});
+//       return;
+//     }
+
+//     const item = cart.items.find(item => item.product.toString() === productId);
+//     if (!item) {
+//       res.status(404).json({message: 'Item not found in cart'});
+//       return;
+//     }
+
+//     item.quantity = quantity;
+
+//     await cart.save();
+//     res.json(cart);
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
+// // Remove item from cart
+// export const removeFromCart: RequestHandler = async (
+//   req: Request,
+//   res: Response,
+//   next: NextFunction,
+// ): Promise<void> => {
+//   const {productId} = req.params;
+
+//   try {
+//     if (!req.user || !req.user._id) {
+//       res.status(401).json({message: 'User not authenticated'});
+//       return;
+//     }
+//     const cart = await Cart.findOne({user: req.user._id});
+//     if (!cart) {
+//       res.status(404).json({message: 'Cart not found'});
+//       return;
+//     }
+
+//     cart.items = cart.items.filter(
+//       item => item.product.toString() !== productId,
+//     );
+
+//     await cart.save();
+//     res.json(cart);
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
+// // Clear the cart
+// export const clearCart: RequestHandler = async (
+//   req: Request,
+//   res: Response,
+//   next: NextFunction,
+// ): Promise<void> => {
+//   try {
+//     console.log(req.user);
+//     if (!req.user || !req.user._id) {
+//       res.status(401).json({message: 'User not authenticated'});
+//       return;
+//     }
+
+//     const cart = await Cart.findOneAndUpdate(
+//       {user: req.user._id},
+//       {items: []},
+//       {new: true},
+//     );
+//     if (!cart) {
+//       res.status(404).json({message: 'Cart not found'});
+//       return;
+//     }
+
+//     res.json(cart);
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
 import {Request, Response, NextFunction, RequestHandler} from 'express';
 import Cart from '../models/Cart';
 import Product from '../models/Product';
+import {InferSchemaType} from 'mongoose';
+
+type CartType = InferSchemaType<typeof Cart.schema>;
+
+interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  data?: T;
+  error?: string;
+}
 
 // Get cart for a specific user
 export const getCart: RequestHandler = async (
   req: Request,
-  res: Response,
+  res: Response<ApiResponse<CartType>>,
   next: NextFunction,
 ) => {
   try {
     if (!req.user || !req.user._id) {
-      res.status(401).json({message: 'Unauthorized'});
+      res.status(401).json({success: false, message: 'Unauthorized'});
       return;
     }
 
@@ -18,11 +191,20 @@ export const getCart: RequestHandler = async (
       'items.product',
     );
     if (!cart) {
-      res.status(404).json({message: 'Cart not found'});
+      res.status(404).json({success: false, message: 'Cart not found'});
       return;
     }
-    res.json(cart);
+    res.status(200).json({
+      success: true,
+      data: cart,
+      message: 'Cart retrieved successfully',
+    });
   } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving cart',
+      error: (error as Error).message,
+    });
     next(error);
   }
 };
@@ -30,12 +212,12 @@ export const getCart: RequestHandler = async (
 // Add item to cart
 export const addToCart: RequestHandler = async (
   req: Request,
-  res: Response,
+  res: Response<ApiResponse<CartType>>,
   next: NextFunction,
 ) => {
   try {
     if (!req.user || !req.user._id) {
-      res.status(401).json({message: 'Unauthorized'});
+      res.status(401).json({success: false, message: 'Unauthorized'});
       return;
     }
 
@@ -49,21 +231,27 @@ export const addToCart: RequestHandler = async (
     const existingItem = cart.items.find(
       item => item.product.toString() === productId,
     );
-
     if (existingItem) {
       existingItem.quantity += quantity;
     } else {
-      const product = await Product.findById(productId); // Fetch product to get the price
+      const product = await Product.findById(productId);
       if (!product) {
-        res.status(404).json({message: 'Product not found'}); // Handle product not found
+        res.status(404).json({success: false, message: 'Product not found'});
         return;
       }
-      cart.items.push({product: productId, quantity, price: product.price}); // Include price
+      cart.items.push({product: productId, quantity, price: product.price});
     }
 
     await cart.save();
-    res.json(cart);
+    res
+      .status(200)
+      .json({success: true, data: cart, message: 'Item added to cart'});
   } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error adding item to cart',
+      error: (error as Error).message,
+    });
     next(error);
   }
 };
@@ -71,33 +259,42 @@ export const addToCart: RequestHandler = async (
 // Update item quantity in the cart
 export const updateCartItem: RequestHandler = async (
   req: Request,
-  res: Response,
+  res: Response<ApiResponse<CartType>>,
   next: NextFunction,
-): Promise<void> => {
+) => {
   const {productId, quantity} = req.body;
 
   try {
     if (!req.user || !req.user._id) {
-      res.status(401).json({message: 'User not authenticated'});
+      res.status(401).json({success: false, message: 'User not authenticated'});
       return;
     }
+
     const cart = await Cart.findOne({user: req.user._id});
     if (!cart) {
-      res.status(404).json({message: 'Cart not found'});
+      res.status(404).json({success: false, message: 'Cart not found'});
       return;
     }
 
     const item = cart.items.find(item => item.product.toString() === productId);
     if (!item) {
-      res.status(404).json({message: 'Item not found in cart'});
+      res.status(404).json({success: false, message: 'Item not found in cart'});
       return;
     }
 
     item.quantity = quantity;
-
     await cart.save();
-    res.json(cart);
+    res.status(200).json({
+      success: true,
+      data: cart,
+      message: 'Cart item updated successfully',
+    });
   } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error updating cart item',
+      error: (error as Error).message,
+    });
     next(error);
   }
 };
@@ -105,29 +302,36 @@ export const updateCartItem: RequestHandler = async (
 // Remove item from cart
 export const removeFromCart: RequestHandler = async (
   req: Request,
-  res: Response,
+  res: Response<ApiResponse<CartType>>,
   next: NextFunction,
-): Promise<void> => {
+) => {
   const {productId} = req.params;
 
   try {
     if (!req.user || !req.user._id) {
-      res.status(401).json({message: 'User not authenticated'});
+      res.status(401).json({success: false, message: 'User not authenticated'});
       return;
     }
+
     const cart = await Cart.findOne({user: req.user._id});
     if (!cart) {
-      res.status(404).json({message: 'Cart not found'});
+      res.status(404).json({success: false, message: 'Cart not found'});
       return;
     }
 
     cart.items = cart.items.filter(
       item => item.product.toString() !== productId,
     );
-
     await cart.save();
-    res.json(cart);
+    res
+      .status(200)
+      .json({success: true, data: cart, message: 'Item removed from cart'});
   } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error removing item from cart',
+      error: (error as Error).message,
+    });
     next(error);
   }
 };
@@ -135,13 +339,12 @@ export const removeFromCart: RequestHandler = async (
 // Clear the cart
 export const clearCart: RequestHandler = async (
   req: Request,
-  res: Response,
+  res: Response<ApiResponse<CartType>>,
   next: NextFunction,
-): Promise<void> => {
+) => {
   try {
-    console.log(req.user);
     if (!req.user || !req.user._id) {
-      res.status(401).json({message: 'User not authenticated'});
+      res.status(401).json({success: false, message: 'User not authenticated'});
       return;
     }
 
@@ -151,12 +354,19 @@ export const clearCart: RequestHandler = async (
       {new: true},
     );
     if (!cart) {
-      res.status(404).json({message: 'Cart not found'});
+      res.status(404).json({success: false, message: 'Cart not found'});
       return;
     }
 
-    res.json(cart);
+    res
+      .status(200)
+      .json({success: true, data: cart, message: 'Cart cleared successfully'});
   } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error clearing cart',
+      error: (error as Error).message,
+    });
     next(error);
   }
 };
