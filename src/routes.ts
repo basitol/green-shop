@@ -56,6 +56,7 @@ router.delete(
 // Product routes
 router.get('/products', productController.getAllProducts);
 router.get('/products/:id', productController.getProductById);
+// In your routes file
 router.post(
   '/products',
   authenticate,
@@ -68,6 +69,12 @@ router.put(
   authorizeAdmin,
   productController.updateProduct,
 );
+router.put(
+  '/products/:id/images',
+  authenticate,
+  authorizeAdmin,
+  productController.updateProductImages,
+);
 router.delete(
   '/products/:id',
   authenticate,
@@ -77,6 +84,7 @@ router.delete(
 
 // Cart routes
 router.get('/cart', authenticate, cartController.getCart);
+router.get('/cart-quantity', authenticate, cartController.getCartQuantity);
 router.post('/cart/add', authenticate, cartController.addToCart);
 router.put('/cart/update', authenticate, cartController.updateCartItem);
 router.delete(
