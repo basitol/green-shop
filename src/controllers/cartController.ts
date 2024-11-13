@@ -163,7 +163,7 @@
 
 import {Request, Response, NextFunction, RequestHandler} from 'express';
 import Cart from '../models/Cart';
-import Product from '../models/Product';
+import {Product} from '../models/Product';
 import {InferSchemaType} from 'mongoose';
 
 type CartType = InferSchemaType<typeof Cart.schema>;
@@ -203,6 +203,45 @@ export const getCart: RequestHandler = async (
     res.status(500).json({
       success: false,
       message: 'Error retrieving cart',
+      error: (error as Error).message,
+    });
+    next(error);
+  }
+};
+
+export const getCartQuantity: RequestHandler = async (
+  req: Request,
+  res: Response<ApiResponse<number>>,
+  next: NextFunction,
+) => {
+  try {
+    if (!req.user || !req.user._id) {
+      res.status(401).json({success: false, message: 'Unauthorized'});
+      return;
+    }
+
+    const cart = await Cart.findOne({user: req.user._id});
+    if (!cart || cart.items.length === 0) {
+      res
+        .status(404)
+        .json({success: false, message: 'Cart not found or is empty'});
+      return;
+    }
+
+    const totalQuantity = cart.items.reduce(
+      (total, item) => total + item.quantity,
+      0,
+    );
+
+    res.status(200).json({
+      success: true,
+      data: totalQuantity,
+      message: 'Total quantity retrieved successfully',
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving cart quantity',
       error: (error as Error).message,
     });
     next(error);

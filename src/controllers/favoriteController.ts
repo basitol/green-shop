@@ -139,7 +139,7 @@
 
 import {Request, Response, NextFunction, RequestHandler} from 'express';
 import Favorite from '../models/Favorite';
-import Product from '../models/Product';
+import {Product} from '../models/Product';
 import {InferSchemaType} from 'mongoose';
 
 type FavoriteType = InferSchemaType<typeof Favorite.schema>;
