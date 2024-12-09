@@ -5,6 +5,7 @@ import * as productController from './controllers/productController';
 import * as cartController from './controllers/cartController';
 import * as favoriteController from './controllers/favoriteController';
 import * as orderController from './controllers/orderController'; // Updated path
+import paymentRoutes from './routes/PaymentRoutes';
 import {authenticate, authorizeAdmin} from './middleware/authMiddleware';
 
 const router: Router = express.Router();
@@ -111,5 +112,8 @@ router.post('/', authenticate, orderController.createOrder);
 router.get('/', authenticate, orderController.getOrders);
 router.get('/:id', authenticate, orderController.getOrderById);
 router.put('/:id/status', authenticate, orderController.updateOrderStatus);
+
+// Payment routes
+router.use('/payments', paymentRoutes);
 
 export default router;

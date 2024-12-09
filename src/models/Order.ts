@@ -1,13 +1,14 @@
-import mongoose, {Schema, Document} from 'mongoose';
+import mongoose, {Schema, Document, Types} from 'mongoose';
 
 export interface IOrderItem {
-  product: mongoose.Types.ObjectId;
+  product: Types.ObjectId;
   quantity: number;
   price: number;
 }
 
 export interface IOrder extends Document {
-  user: mongoose.Types.ObjectId;
+  _id: Types.ObjectId;
+  user: Types.ObjectId;
   items: IOrderItem[];
   totalAmount: number;
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
