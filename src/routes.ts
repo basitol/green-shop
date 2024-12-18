@@ -6,6 +6,7 @@ import * as cartController from './controllers/cartController';
 import * as favoriteController from './controllers/favoriteController';
 import * as orderController from './controllers/orderController'; // Updated path
 import paymentRoutes from './routes/PaymentRoutes';
+import orderRoutes from './routes/orderRoutes';
 import {authenticate, authorizeAdmin} from './middleware/authMiddleware';
 
 const router: Router = express.Router();
@@ -108,11 +109,12 @@ router.delete(
   favoriteController.removeFromFavorites,
 );
 
-router.post('/', authenticate, orderController.createOrder);
-router.get('/', authenticate, orderController.getOrders);
-router.get('/:id', authenticate, orderController.getOrderById);
-router.put('/:id/status', authenticate, orderController.updateOrderStatus);
+// router.post('/', authenticate, orderController.createOrder);
+// router.get('/', authenticate, orderController.getOrders);
+// router.get('/:id', authenticate, orderController.getOrderById);
+// router.put('/:id/status', authenticate, orderController.updateOrderStatus);
 
+router.use('/orders', orderRoutes);
 // Payment routes
 router.use('/payments', paymentRoutes);
 
