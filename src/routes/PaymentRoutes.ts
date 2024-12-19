@@ -34,11 +34,12 @@
 
 import express, {Router} from 'express';
 import {authenticate} from '../middleware/authMiddleware';
-import {
-  capturePayPalPayment,
-  createPayPalOrder,
-  handlePayPalWebhook,
-} from '../controllers/PaymentController';
+// import {
+//   capturePayPalPayment,
+//   createPayPalOrder,
+//   handlePayPalWebhook,
+// } from '../controllers/PaymentController';
+import { PayPalController } from '../controllers/PayPalController';
 
 const router: Router = express.Router();
 
@@ -47,20 +48,20 @@ const router: Router = express.Router();
  * @desc    Create a PayPal order for the cart
  * @access  Private
  */
-router.post('/create-order', authenticate, createPayPalOrder);
+router.post('/create-order', authenticate, PayPalController.createOrder);
 
 /**
  * @route   POST /api/payments/capture/:orderId
  * @desc    Capture PayPal payment after approval
  * @access  Private
  */
-router.post('/capture/:orderId', authenticate, capturePayPalPayment);
+router.post('/capture/:orderId', authenticate, PayPalController.capturePayment);
 
 /**
  * @route   POST /api/payments/webhook
  * @desc    Handle PayPal webhook notifications
  * @access  Public
  */
-router.post('/webhook', handlePayPalWebhook);
+// router.post('/webhook', handlePayPalWebhook);
 
 export default router;
