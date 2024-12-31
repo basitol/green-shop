@@ -11,6 +11,14 @@ export interface IOrder extends Document {
   items: IOrderItem[];
   totalAmount: number;
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  shippingAddress: {
+    street: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+    phone: string;
+  };
   payment: {
     provider: 'paypal';
     transactionId: string;
@@ -34,6 +42,14 @@ const OrderSchema = new Schema({
     type: String,
     enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
     default: 'pending'
+  },
+  shippingAddress: {
+    street: { type: String, required: true },
+    city: { type: String, required: true },
+    state: { type: String, required: true },
+    zipCode: { type: String, required: true },
+    country: { type: String, required: true },
+    phone: { type: String, required: true }
   },
   payment: {
     provider: { type: String, enum: ['paypal'], required: true },
