@@ -10,7 +10,7 @@
 //       method: 'POST',
 //       headers: {
 //         'Authorization': `Basic ${auth}`,
-//         'Content-Type': 'application/x-www-form-urlencoded',
+//         'Content-Type': 'application/x-www-form-urlencoded'
 //       },
 //       body: 'grant_type=client_credentials'
 //     });
@@ -19,10 +19,10 @@
 //     return data.access_token;
 //   }
 
-//   static async createOrder(req: Request, res: Response): Promise<void> {
+//   public static async createOrder(req: Request, res: Response): Promise<void> {
 //     try {
 //       const { items, total } = req.body;
-//       const accessToken = await this.getAccessToken();
+//       const accessToken = await PayPalController.getAccessToken();
 
 //       const response = await fetch('https://api-m.sandbox.paypal.com/v2/checkout/orders', {
 //         method: 'POST',
@@ -50,32 +50,34 @@
 //     }
 //   }
 
-//   static async capturePayment(req: Request, res: Response): Promise<any> {
+//   public static async capturePayment(req: Request, res: Response): Promise<void> {
 //     try {
 //       const { orderID } = req.params;
-//       const accessToken = await this.getAccessToken();
+//       const { items, shippingAddress } = req.body;  
+//       const accessToken = await PayPalController.getAccessToken();
 
 //       if (!req.user) {
-//         return res.status(401).json({ error: 'User not authenticated' });
+//         res.status(401).json({ error: 'User not authenticated' });
+//         return;
 //       }
 
 //       const response = await fetch(`https://api-m.sandbox.paypal.com/v2/checkout/orders/${orderID}/capture`, {
 //         method: 'POST',
 //         headers: {
 //           'Authorization': `Bearer ${accessToken}`,
-//           'Content-Type': 'application/json',
+//           'Content-Type': 'application/json'
 //         }
 //       });
 
 //       const data = await response.json();
       
 //       if (data.status === 'COMPLETED') {
-//         // Create order in database
 //         const newOrder = new Order({
-//           user: req.user._id, // Assuming you have user in request
-//           items: req.body.items,
+//           user: req.user._id,
+//           items: items,
 //           totalAmount: data.purchase_units[0].amount.value,
 //           status: 'processing',
+//           shippingAddress: shippingAddress,  
 //           payment: {
 //             provider: 'paypal',
 //             transactionId: orderID,
@@ -91,7 +93,7 @@
 //         res.status(400).json({ error: 'Payment not completed' });
 //       }
 //     } catch (error) {
-//       console.error('Error capturing PayPal payment:', error);
+//       console.error('Error capturing payment:', error);
 //       res.status(500).json({ error: 'Failed to capture payment' });
 //     }
 //   }
@@ -154,6 +156,7 @@ export class PayPalController {
   public static async capturePayment(req: Request, res: Response): Promise<void> {
     try {
       const { orderID } = req.params;
+      const { items, shippingAddress } = req.body;  
       const accessToken = await PayPalController.getAccessToken();
 
       if (!req.user) {
@@ -174,9 +177,10 @@ export class PayPalController {
       if (data.status === 'COMPLETED') {
         const newOrder = new Order({
           user: req.user._id,
-          items: req.body.items,
+          items: items,
           totalAmount: data.purchase_units[0].amount.value,
           status: 'processing',
+          shippingAddress: shippingAddress,  
           payment: {
             provider: 'paypal',
             transactionId: orderID,

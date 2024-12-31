@@ -136,7 +136,7 @@ export const createOrder = async (
       user: userId,
       orderNumber: `ORD-${Date.now()}`,
       items: cart.items.map(item => ({
-        product: item.product._id,
+        productId: item.product._id,
         name: item.product.name,
         quantity: item.quantity,
         price: item.price,
@@ -198,9 +198,10 @@ export const createOrder = async (
 export const getOrders = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.user?._id;
+    console.log(userId);
     const orders = await Order.find({user: userId})
       .sort({createdAt: -1})
-      .populate('items.product');
+      .populate('items.productId');
 
     res.status(200).json({
       success: true,
@@ -256,7 +257,7 @@ export const getOrderById = async (
     const userId = req.user?._id;
 
     const order = await Order.findOne({_id: id, user: userId}).populate(
-      'items.product',
+      'items.productId',
     );
 
     if (!order) {
