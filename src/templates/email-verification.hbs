@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .note {
+            font-size: 12px;
+            color: #666;
+            margin-top: 20px;
+        }
+        .code {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Verify Your Email Address</h2>
+        <p>Hello,</p>
+        <p>Thank you for registering with {{siteName}}. To verify your email address, use the following token:</p>
+        
+        <div class="code">
+            {{verificationToken}}
+        </div>
+
+        <p>To verify your email:</p>
+        <ol>
+            <li>Copy the token above</li>
+            <li>Go to the email verification endpoint: {{verificationUrl}}</li>
+            <li>Submit a POST request with the following JSON body:
+                <div class="code">
+                {
+                    "token": "{{verificationToken}}"
+                }
+                </div>
+            </li>
+        </ol>
+
+        <p>This token will expire in {{validityPeriod}}.</p>
+        
+        <div class="note">
+            <p>If you did not create an account with {{siteName}}, please ignore this email.</p>
+            <p>This is an automated email from {{siteName}}. Please do not reply to this email.</p>
+        </div>
+    </div>
+</body>
+</html>
