@@ -1,13 +1,16 @@
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Load environment variables first
+dotenv.config({ path: path.join(__dirname, '../.env') });
+
 import express from 'express';
 import expressFileUpload from 'express-fileupload';
 import mongoose from 'mongoose';
-import dotenv from 'dotenv';
 import cors from 'cors';
 import routes from './routes';
 import paymentRoutes from './routes/PaymentRoutes';
 import { errorHandler } from './middleware/errorMiddleware';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -25,7 +28,14 @@ const corsOptions = {
 // Middleware
 app.use(cors(corsOptions));
 app.use(express.json());
-app.use(expressFileUpload());
+
+// File upload middleware
+app.use(expressFileUpload({
+  useTempFiles: true,
+  tempFileDir: '/tmp/',
+  debug: true, // Enable debug mode
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max file size
+}));
 
 // Routes
 app.use('/api', routes);

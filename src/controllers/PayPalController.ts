@@ -173,6 +173,8 @@ export class PayPalController {
       });
 
       const data = await response.json();
+
+      console.log(data)
       
       if (data.status === 'COMPLETED') {
         const newOrder = new Order({
