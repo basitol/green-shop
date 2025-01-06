@@ -7,6 +7,7 @@ interface IOrderItem {
 }
 
 export interface IOrder extends Document {
+  orderNumber: string;
   user: Types.ObjectId;
   items: IOrderItem[];
   totalAmount: number;
@@ -26,11 +27,18 @@ export interface IOrder extends Document {
     paidAmount: number;
     paidAt: Date;
   };
+  cancelReason?: string;
+  cancelledAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
 
 const OrderSchema = new Schema({
+  orderNumber: { 
+    type: String, 
+    required: true,
+    unique: true
+  },
   user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   items: [{
     productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
@@ -61,7 +69,9 @@ const OrderSchema = new Schema({
     },
     paidAmount: { type: Number, required: true },
     paidAt: { type: Date }
-  }
+  },
+  cancelReason: { type: String },
+  cancelledAt: { type: Date }
 }, {
   timestamps: true
 });

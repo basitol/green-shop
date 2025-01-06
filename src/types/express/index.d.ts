@@ -1,38 +1,13 @@
-// import {Document} from 'mongoose';
-// import {IUser} from '../../models/User';
-
-// declare global {
-//   namespace Express {
-//     interface Request {
-//       user?: IUser;
-//     }
-//   }
-// }
-
-// export {};
-
-// import {Document} from 'mongoose';
-
-// declare global {
-//   namespace Express {
-//     interface Request {
-//       user?: {
-//         _id: string;
-//         // Add other user properties as needed
-//       };
-//     }
-//   }
-// }
-
 import {Express} from 'express-serve-static-core';
+import { IUser } from '../../models/User';
 
 declare global {
   namespace Express {
+    // This augments the Request interface in Express
     interface Request {
-      user?: {
-        _id: string;
-        // Add other user properties here as needed
-      };
+      user?: IUser | null;
     }
   }
 }
+
+export {};

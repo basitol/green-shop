@@ -1,21 +1,17 @@
-import express, {Router} from 'express';
-// import {authenticateUser} from '../middleware/auth';
+import express from 'express';
 import {
-  //   createOrder,
+  createOrder,
   getOrders,
   getOrderById,
   updateOrderStatus,
   cancelOrder,
   getOrdersByDateRange,
   getOrderStats,
-  createOrder,
+  getAllOrders
 } from '../controllers/orderController';
 import {authenticate, authorizeAdmin} from '../middleware/authMiddleware';
 
-const router: Router = express.Router();
-
-// Apply authentication middleware to all routes
-// router.use(authenticate);
+const router = express.Router();
 
 /**
  * @route   POST /api/orders
@@ -32,29 +28,36 @@ router.post('/', authenticate, createOrder);
 router.get('/', authenticate, getOrders);
 
 /**
+ * @route   GET /api/orders/admin
+ * @desc    Get all orders (admin only)
+ * @access  Private/Admin
+ */
+router.get('/admin', authenticate, authorizeAdmin, getAllOrders);
+
+/**
  * @route   GET /api/orders/:id
- * @desc    Get specific order by ID
+ * @desc    Get order by ID
  * @access  Private
  */
 router.get('/:id', authenticate, getOrderById);
 
 /**
- * @route   PUT /api/orders/:id/status
+ * @route   PATCH /api/orders/:id/status
  * @desc    Update order status
- * @access  Private
+ * @access  Private/Admin
  */
-router.put('/:id/status', authenticate, updateOrderStatus);
+router.patch('/:id/status', authenticate, authorizeAdmin, updateOrderStatus);
 
 /**
- * @route   POST /api/orders/:id/cancel
+ * @route   PATCH /api/orders/:id/cancel
  * @desc    Cancel an order
  * @access  Private
  */
-router.post('/:id/cancel', authenticate, cancelOrder);
+router.patch('/:id/cancel', authenticate, cancelOrder);
 
 /**
  * @route   GET /api/orders/date-range
- * @desc    Get orders within a date range
+ * @desc    Get orders by date range
  * @access  Private
  */
 router.get('/date-range', authenticate, getOrdersByDateRange);
