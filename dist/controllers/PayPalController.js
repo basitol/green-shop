@@ -1,4 +1,7 @@
 "use strict";
+// import { Request, Response } from 'express';
+// import fetch from 'node-fetch';
+// import Order from '../models/Order';
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -14,6 +17,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PayPalController = void 0;
 const node_fetch_1 = __importDefault(require("node-fetch"));
+const Order_1 = __importDefault(require("../models/Order"));
 class PayPalController {
     static getAccessToken() {
         return __awaiter(this, void 0, void 0, function* () {
@@ -22,7 +26,7 @@ class PayPalController {
                 method: 'POST',
                 headers: {
                     'Authorization': `Basic ${auth}`,
-                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Content-Type': 'application/x-www-form-urlencoded'
                 },
                 body: 'grant_type=client_credentials'
             });
@@ -33,8 +37,8 @@ class PayPalController {
     static createOrder(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                const { order_id, amount } = req.body;
-                const accessToken = yield this.getAccessToken();
+                const { items, total } = req.body;
+                const accessToken = yield PayPalController.getAccessToken();
                 const response = yield (0, node_fetch_1.default)('https://api-m.sandbox.paypal.com/v2/checkout/orders', {
                     method: 'POST',
                     headers: {
@@ -44,11 +48,11 @@ class PayPalController {
                     body: JSON.stringify({
                         intent: 'CAPTURE',
                         purchase_units: [{
-                                reference_id: order_id,
                                 amount: {
                                     currency_code: 'USD',
-                                    value: amount.toString()
-                                }
+                                    value: total.toString()
+                                },
+                                description: 'Green Phone Shop Purchase'
                             }]
                     })
                 });
@@ -65,19 +69,45 @@ class PayPalController {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 const { orderID } = req.params;
-                const accessToken = yield this.getAccessToken();
+                const { items, shippingAddress } = req.body;
+                const accessToken = yield PayPalController.getAccessToken();
+                if (!req.user) {
+                    res.status(401).json({ error: 'User not authenticated' });
+                    return;
+                }
                 const response = yield (0, node_fetch_1.default)(`https://api-m.sandbox.paypal.com/v2/checkout/orders/${orderID}/capture`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json',
+                        'Content-Type': 'application/json'
                     }
                 });
-                const captureData = yield response.json();
-                res.json(captureData);
+                const data = yield response.json();
+                console.log(data);
+                if (data.status === 'COMPLETED') {
+                    const newOrder = new Order_1.default({
+                        user: req.user._id,
+                        items: items,
+                        totalAmount: data.purchase_units[0].amount.value,
+                        status: 'processing',
+                        shippingAddress: shippingAddress,
+                        payment: {
+                            provider: 'paypal',
+                            transactionId: orderID,
+                            status: 'completed',
+                            paidAmount: data.purchase_units[0].amount.value,
+                            paidAt: new Date()
+                        }
+                    });
+                    yield newOrder.save();
+                    res.json({ success: true, order: newOrder });
+                }
+                else {
+                    res.status(400).json({ error: 'Payment not completed' });
+                }
             }
             catch (error) {
-                console.error('Error capturing PayPal payment:', error);
+                console.error('Error capturing payment:', error);
                 res.status(500).json({ error: 'Failed to capture payment' });
             }
         });

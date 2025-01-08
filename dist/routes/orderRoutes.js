@@ -4,52 +4,55 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
-// import {authenticateUser} from '../middleware/auth';
 const orderController_1 = require("../controllers/orderController");
 const authMiddleware_1 = require("../middleware/authMiddleware");
 const router = express_1.default.Router();
-// Apply authentication middleware to all routes
-// router.use(authenticate);
 /**
  * @route   POST /api/orders
  * @desc    Create a new order
  * @access  Private
  */
-router.post('/', authMiddleware_1.authorizeAdmin, orderController_1.createOrder);
+router.post('/', authMiddleware_1.authenticate, orderController_1.createOrder);
 /**
  * @route   GET /api/orders
  * @desc    Get all orders for the authenticated user
  * @access  Private
  */
-router.get('/', orderController_1.getOrders);
+router.get('/', authMiddleware_1.authenticate, orderController_1.getOrders);
+/**
+ * @route   GET /api/orders/admin
+ * @desc    Get all orders (admin only)
+ * @access  Private/Admin
+ */
+router.get('/admin', authMiddleware_1.authenticate, authMiddleware_1.authorizeAdmin, orderController_1.getAllOrders);
 /**
  * @route   GET /api/orders/:id
- * @desc    Get specific order by ID
+ * @desc    Get order by ID
  * @access  Private
  */
-router.get('/:id', orderController_1.getOrderById);
+router.get('/:id', authMiddleware_1.authenticate, orderController_1.getOrderById);
 /**
- * @route   PUT /api/orders/:id/status
+ * @route   PATCH /api/orders/:id/status
  * @desc    Update order status
- * @access  Private
+ * @access  Private/Admin
  */
-router.put('/:id/status', orderController_1.updateOrderStatus);
+router.patch('/:id/status', authMiddleware_1.authenticate, authMiddleware_1.authorizeAdmin, orderController_1.updateOrderStatus);
 /**
- * @route   POST /api/orders/:id/cancel
+ * @route   PATCH /api/orders/:id/cancel
  * @desc    Cancel an order
  * @access  Private
  */
-router.post('/:id/cancel', orderController_1.cancelOrder);
+router.patch('/:id/cancel', authMiddleware_1.authenticate, orderController_1.cancelOrder);
 /**
  * @route   GET /api/orders/date-range
- * @desc    Get orders within a date range
+ * @desc    Get orders by date range
  * @access  Private
  */
-router.get('/date-range', orderController_1.getOrdersByDateRange);
+router.get('/date-range', authMiddleware_1.authenticate, orderController_1.getOrdersByDateRange);
 /**
  * @route   GET /api/orders/stats
  * @desc    Get order statistics
  * @access  Private
  */
-router.get('/stats', orderController_1.getOrderStats);
+router.get('/stats', authMiddleware_1.authenticate, orderController_1.getOrderStats);
 exports.default = router;
