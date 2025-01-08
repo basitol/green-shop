@@ -27,30 +27,37 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
-const userController = __importStar(require("./controllers/userController"));
 const adminController = __importStar(require("./controllers/adminController"));
 const productController = __importStar(require("./controllers/productController"));
 const cartController = __importStar(require("./controllers/cartController"));
 const favoriteController = __importStar(require("./controllers/favoriteController"));
 const PaymentRoutes_1 = __importDefault(require("./routes/PaymentRoutes"));
 const orderRoutes_1 = __importDefault(require("./routes/orderRoutes"));
+const userRoutes_1 = __importDefault(require("./routes/userRoutes"));
 const authMiddleware_1 = require("./middleware/authMiddleware");
 const router = express_1.default.Router();
 // User routes
-router.post('/users/register', userController.register);
-router.post('/users/login', userController.login);
-router.get('/users/profile', authMiddleware_1.authenticate, (req, res, next) => {
-    const authenticatedReq = req; // Type assertion
-    userController.getProfile(authenticatedReq, res, next);
-});
-router.put('/users/profile', authMiddleware_1.authenticate, (req, res, next) => {
-    const authenticatedReq = req; // Type assertion
-    userController.updateProfile(authenticatedReq, res, next);
-});
-router.get('/generate-admin-token', authMiddleware_1.authenticate, authMiddleware_1.authorizeAdmin, (req, res, next) => {
-    const authenticatedReq = req;
-    userController.generateAdminCreationToken(authenticatedReq, res, next);
-});
+// router.post('/users/register', userController.register);
+// router.post('/users/login', userController.loginLimiter, userController.login);
+// router.post('/users/forgot-password', userController.passwordResetLimiter, userController.forgotPassword);
+// router.post('/users/reset-password', userController.passwordResetLimiter, userController.resetPassword);
+// router.get('/users/profile', authenticate, (req, res, next) => {
+//   const authenticatedReq = req as AuthenticatedRequest; // Type assertion
+//   userController.getProfile(authenticatedReq, res, next);
+// });
+// router.put('/users/profile', authenticate, (req, res, next) => {
+//   const authenticatedReq = req as AuthenticatedRequest; // Type assertion
+//   userController.updateProfile(authenticatedReq, res, next);
+// });
+// router.get(
+//   '/generate-admin-token',
+//   authenticate,
+//   authorizeAdmin,
+//   (req, res, next) => {
+//     const authenticatedReq = req as AuthenticatedRequest;
+//     userController.generateAdminCreationToken(authenticatedReq, res, next);
+//   },
+// );
 // Admin routes
 router.get('/admin/users', authMiddleware_1.authenticate, authMiddleware_1.authorizeAdmin, adminController.getAllUsers);
 router.delete('/admin/users/:id', authMiddleware_1.authenticate, authMiddleware_1.authorizeAdmin, adminController.deleteUser);
@@ -80,4 +87,6 @@ router.delete('/favorites/remove/:productId', authMiddleware_1.authenticate, fav
 router.use('/orders', orderRoutes_1.default);
 // Payment routes
 router.use('/payments', PaymentRoutes_1.default);
+// User routes
+router.use('/users', userRoutes_1.default);
 exports.default = router;

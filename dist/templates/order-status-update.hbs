@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .status-update {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #fff;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .status-shipped {
+            color: #4CAF50;
+        }
+        .status-processing {
+            color: #2196F3;
+        }
+        .status-delivered {
+            color: #4CAF50;
+        }
+        .footer {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Order Status Update</h2>
+        <p>Dear {{customerName}},</p>
+        <p>There has been an update to your order at {{siteName}}.</p>
+        
+        <div class="status-update">
+            <h3>Order Status: <span class="status-{{statusClass}}">{{status}}</span></h3>
+            <p>Order Number: {{orderNumber}}</p>
+            <p>Update Time: {{updateTime}}</p>
+            
+            {{#if trackingNumber}}
+            <div class="tracking-info">
+                <h4>Tracking Information</h4>
+                <p>Tracking Number: {{trackingNumber}}</p>
+                <p>Carrier: {{carrier}}</p>
+                {{#if trackingUrl}}
+                <p>Track your package: <a href="{{trackingUrl}}">Click here</a></p>
+                {{/if}}
+            </div>
+            {{/if}}
+            
+            {{#if estimatedDelivery}}
+            <p>Estimated Delivery: {{estimatedDelivery}}</p>
+            {{/if}}
+            
+            {{#if statusMessage}}
+            <p>Additional Information: {{statusMessage}}</p>
+            {{/if}}
+        </div>
+        
+        <p>You can view your complete order details by logging into your account.</p>
+        
+        <div class="footer">
+            <p>If you have any questions about your order, please contact our customer service.</p>
+            <p>This is an automated email from {{siteName}}. Please do not reply to this email.</p>
+        </div>
+    </div>
+</body>
+</html>

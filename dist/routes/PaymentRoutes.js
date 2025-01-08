@@ -31,24 +31,29 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // export default router;
 const express_1 = __importDefault(require("express"));
 const authMiddleware_1 = require("../middleware/authMiddleware");
-const PaymentController_1 = require("../controllers/PaymentController");
+// import {
+//   capturePayPalPayment,
+//   createPayPalOrder,
+//   handlePayPalWebhook,
+// } from '../controllers/PaymentController';
+const PayPalController_1 = require("../controllers/PayPalController");
 const router = express_1.default.Router();
 /**
  * @route   POST /api/payments/create-order
  * @desc    Create a PayPal order for the cart
  * @access  Private
  */
-router.post('/create-order', authMiddleware_1.authenticate, PaymentController_1.createPayPalOrder);
+router.post('/create-order', authMiddleware_1.authenticate, PayPalController_1.PayPalController.createOrder);
 /**
  * @route   POST /api/payments/capture/:orderId
  * @desc    Capture PayPal payment after approval
  * @access  Private
  */
-router.post('/capture/:orderId', authMiddleware_1.authenticate, PaymentController_1.capturePayPalPayment);
+router.post('/capture/:orderId', authMiddleware_1.authenticate, PayPalController_1.PayPalController.capturePayment);
 /**
  * @route   POST /api/payments/webhook
  * @desc    Handle PayPal webhook notifications
  * @access  Public
  */
-router.post('/webhook', PaymentController_1.handlePayPalWebhook);
+// router.post('/webhook', handlePayPalWebhook);
 exports.default = router;
