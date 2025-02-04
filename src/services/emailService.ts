@@ -168,11 +168,11 @@ export class EmailService {
   }
 
   public async sendWelcomeEmail(
-    to: string,
-    username: string
+    email: string,
+    fullName: string
   ): Promise<void> {
-    console.log('Preparing welcome email for:', username);
-    
+    console.log('Preparing welcome email for:', fullName);
+
     const template = this.templates.get('welcome-email');
     if (!template) {
       console.error('Welcome email template not found!');
@@ -180,8 +180,8 @@ export class EmailService {
     }
 
     const templateData = {
-      username,
-      email: to,
+      fullName,
+      email,
       shopUrl: process.env.FRONTEND_URL,
       year: new Date().getFullYear(),
       address: process.env.COMPANY_ADDRESS || 'Your Eco-Friendly Phone Shop'
@@ -194,10 +194,10 @@ export class EmailService {
     console.log('Generated HTML length:', html.length);
 
     await this.sendEmail({
-      to,
+      to: email,
       subject: 'Welcome to Green Phone Shop! 🌱📱',
       template: 'welcome-email',
-      data: {}
+      data: templateData
     });
   }
 

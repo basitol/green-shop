@@ -442,7 +442,7 @@ export const getAllOrders = async (req: Request, res: Response): Promise<void> =
       .sort({ [sortBy]: sortOrder })
       .skip(skip)
       .limit(limit)
-      .populate('user', 'username email')
+      .populate('user', 'firstName lastName email')
       .populate('items.productId', 'name price');
 
     res.json({
