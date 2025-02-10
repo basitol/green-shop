@@ -283,6 +283,14 @@ export const login: RequestHandler = async (
       {expiresIn: '1d'},
     );
 
+    // Set token in cookie
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
+    });
+
     res.json({
       success: true,
       message: MESSAGES.AUTH.LOGIN_SUCCESS,

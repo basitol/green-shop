@@ -9,7 +9,7 @@ import paymentRoutes from './routes/PaymentRoutes';
 import orderRoutes from './routes/orderRoutes';
 import userRoutes from './routes/userRoutes';
 import {authenticate, authorizeAdmin} from './middleware/authMiddleware';
-
+import categoryRoutes from './routes/categoryRoutes';
 const router: Router = express.Router();
 
 // Update the AuthenticatedRequest type definition to include 'id' and 'role'
@@ -122,5 +122,7 @@ router.use('/orders', orderRoutes);
 router.use('/payments', paymentRoutes);
 // User routes
 router.use('/users', userRoutes);
+// Category routes
+router.use('/categories', categoryRoutes);
 
 export default router;

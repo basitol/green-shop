@@ -6,6 +6,7 @@ import cloudinary from '../config/cloudinary';
 import fileUpload from 'express-fileupload';
 import {ParamsDictionary} from 'express-serve-static-core';
 import {ParsedQs} from 'qs';
+import {Category} from '../models/Category';
 
 type ProductType = InferSchemaType<typeof Product.schema>;
 
@@ -34,7 +35,7 @@ export const getAllProducts: RequestHandler = async (
   next: NextFunction,
 ) => {
   try {
-    const products = await Product.find();
+    const products = await Product.find().populate('category', 'name description');
     res.status(200).json({
       success: true,
       data: products,
@@ -83,7 +84,17 @@ export const createProduct = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const {name, description, color, storage, price, stock} = req.body;
+    const {name, description, color, storage, price, stock, category} = req.body;
+
+    // Verify category exists
+    const categoryExists = await Category.findById(category);
+    if (!categoryExists) {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid category ID',
+      });
+      return;
+    }
 
     // Type check for files
     if (!req.files || Object.keys(req.files).length === 0) {
@@ -145,6 +156,7 @@ export const createProduct = async (
       stock: parseInt(stock, 10),
       mainImage: mainImageUpload.secure_url,
       images,
+      category,
     });
 
     await product.save();

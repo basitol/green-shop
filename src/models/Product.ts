@@ -58,6 +58,7 @@ export interface IProduct extends Document {
   totalReviews: number;
   images: string[]; // Changed to string array for URLs only
   mainImage: string; // Changed to string for URL only
+  category: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -74,6 +75,11 @@ const ProductSchema: Schema = new Schema(
     totalReviews: {type: Number, default: 0},
     mainImage: {type: String, required: true}, // Changed to String type
     images: [{type: String}], // Changed to array of Strings
+    category: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Category',
+      required: [true, 'Product category is required']
+    },
   },
   {timestamps: true},
 );
