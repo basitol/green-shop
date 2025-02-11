@@ -16,17 +16,7 @@ router.get('/:id', getCategory);
 
 // Protected routes (admin only)
 router.post('/', isAuthenticatedUser, authorizeRoles('admin'), createCategory);
-router.put(
-  '/:id',
-  isAuthenticatedUser,
-  authorizeRoles('admin'),
-  updateCategory,
-);
-router.delete(
-  '/:id',
-  isAuthenticatedUser,
-  authorizeRoles('admin'),
-  deleteCategory,
-);
+router.put('/:id', isAuthenticatedUser, authorizeRoles('admin'), updateCategory);
+router.delete('/:id', isAuthenticatedUser, authorizeRoles('admin'), deleteCategory);
 
 export default router;

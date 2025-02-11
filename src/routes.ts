@@ -86,6 +86,10 @@ router.delete(
   authorizeAdmin,
   productController.deleteProduct,
 );
+router.get(
+  '/products/category/:categoryId',
+  productController.getProductsByCategory
+);
 
 // Cart routes
 router.get('/cart', authenticate, cartController.getCart);

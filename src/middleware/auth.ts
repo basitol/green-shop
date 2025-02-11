@@ -1,44 +1,57 @@
 import {Request, Response, NextFunction} from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/User';
-import ErrorHandler from '../utils/errorHandler';
+import ErrorHandler, { createError } from '../utils/errorHandler';
 import {catchAsyncErrors} from './catchAsyncErrors';
 
+// Define the JWT payload type
 interface JwtPayload {
   id: string;
 }
 
-interface CustomRequest extends Request {
-  user?: any;
-}
-
 // Check if user is authenticated
 export const isAuthenticatedUser = catchAsyncErrors(
-  async (req: CustomRequest, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     const {token} = req.cookies;
 
     if (!token) {
-      return next(new ErrorHandler('Login first to access this resource', 401));
+      return next(
+        createError.unauthorized('Please login to access this resource'),
+      );
     }
 
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET as string,
-    ) as JwtPayload;
-    req.user = await User.findById(decoded.id);
+    try {
+      const decoded = jwt.verify(
+        token,
+        process.env.JWT_SECRET as string,
+      ) as JwtPayload;
+      const user = await User.findById(decoded.id).select('_id role');
 
-    next();
+      if (!user) {
+        return next(createError.unauthorized('User not found'));
+      }
+
+      req.user = {
+        _id: user._id,
+        role: user.role,
+      };
+      next();
+    } catch (error) {
+      return next(createError.unauthorized('Invalid or expired token'));
+    }
   },
 );
 
 // Handling users roles
 export const authorizeRoles = (...roles: string[]) => {
-  return (req: CustomRequest, _res: Response, next: NextFunction) => {
-    if (!roles.includes(req.user.role)) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    console.log(req.user);
+    if (!req.user || !roles.includes(req.user.role)) {
       return next(
-        new ErrorHandler(
-          `Role (${req.user.role}) is not allowed to access this resource`,
-          403,
+        createError.forbidden(
+          `Access denied. ${
+            req.user?.role || 'User'
+          } is not authorized to access this resource`,
         ),
       );
     }
