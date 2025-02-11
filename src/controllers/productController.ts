@@ -7,6 +7,7 @@ import fileUpload from 'express-fileupload';
 import {ParamsDictionary} from 'express-serve-static-core';
 import {ParsedQs} from 'qs';
 import {Category} from '../models/Category';
+import {catchAsyncErrors} from '../middleware/catchAsyncErrors';
 
 type ProductType = InferSchemaType<typeof Product.schema>;
 
@@ -375,3 +376,54 @@ export const submitReview: RequestHandler = async (
     next(error);
   }
 };
+
+// Add this new function to get products by category
+export const getProductsByCategory = catchAsyncErrors(
+  async (req: Request, res: Response<ApiResponse<ProductType[]>>) => {
+    try {
+      const categoryId = req.params.categoryId;
+      const { sort, minPrice, maxPrice } = req.query;
+
+      // Verify category exists
+      const category = await Category.findById(categoryId);
+      if (!category) {
+        return res.status(404).json({
+          success: false,
+          message: 'Category not found',
+        });
+      }
+
+      // Build query
+      let query = Product.find({ category: categoryId });
+
+      // Apply price filters if provided
+      if (minPrice || maxPrice) {
+        const priceFilter: { $gte?: number; $lte?: number } = {};
+        if (minPrice) priceFilter.$gte = Number(minPrice);
+        if (maxPrice) priceFilter.$lte = Number(maxPrice);
+        query = query.where('price').equals(priceFilter);
+      }
+
+      // Apply sorting if provided
+      if (sort) {
+        const sortOrder = sort === 'desc' ? -1 : 1;
+        query = query.sort({ price: sortOrder });
+      }
+
+      // Execute query with category population
+      const products = await query.populate('category', 'name description');
+
+      res.status(200).json({
+        success: true,
+        data: products,
+        message: `Products in category: ${category.name}`,
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Error retrieving products',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  },
+);
