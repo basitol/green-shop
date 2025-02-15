@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, {Document, Schema} from 'mongoose';
 import bcrypt from 'bcryptjs';
 
 export type UserRole = 'user' | 'moderator' | 'admin' | 'superadmin';
@@ -17,23 +17,30 @@ export interface IUser extends Document {
   loginAttempts: number;
 }
 
-const UserSchema = new Schema({
-  firstName: { type: String, required: true },
-  lastName: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  role: { type: String, enum: ['user', 'moderator', 'admin', 'superadmin'], default: 'user' },
-  isVerified: { type: Boolean, default: true },
-  resetToken: String,
-  resetTokenExpiry: Date,
-  lastLoginAttempt: Date,
-  loginAttempts: { type: Number, default: 0 }
-}, {
-  timestamps: true
-});
+const UserSchema = new Schema(
+  {
+    firstName: {type: String, required: true},
+    lastName: {type: String, required: true},
+    email: {type: String, required: true, unique: true},
+    password: {type: String, required: true},
+    role: {
+      type: String,
+      enum: ['user', 'moderator', 'admin', 'superadmin'],
+      default: 'user',
+    },
+    isVerified: {type: Boolean, default: true},
+    resetToken: String,
+    resetTokenExpiry: Date,
+    lastLoginAttempt: Date,
+    loginAttempts: {type: Number, default: 0},
+  },
+  {
+    timestamps: true,
+  },
+);
 
 // Hash password before saving
-UserSchema.pre('save', async function(this: any, next) {
+UserSchema.pre('save', async function (this: any, next) {
   if (!this.isModified('password')) return next();
 
   try {
@@ -47,6 +54,6 @@ UserSchema.pre('save', async function(this: any, next) {
 });
 
 // Add index for token expiry
-UserSchema.index({ resetTokenExpiry: 1 }, { expireAfterSeconds: 0 });
+UserSchema.index({resetTokenExpiry: 1}, {expireAfterSeconds: 0});
 
 export default mongoose.model<IUser>('User', UserSchema);

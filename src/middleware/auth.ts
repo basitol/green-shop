@@ -1,7 +1,7 @@
 import {Request, Response, NextFunction} from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/User';
-import ErrorHandler, { createError } from '../utils/errorHandler';
+import ErrorHandler, {createError} from '../utils/errorHandler';
 import {catchAsyncErrors} from './catchAsyncErrors';
 
 // Define the JWT payload type

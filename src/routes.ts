@@ -88,7 +88,7 @@ router.delete(
 );
 router.get(
   '/products/category/:categoryId',
-  productController.getProductsByCategory
+  productController.getProductsByCategory,
 );
 
 // Cart routes

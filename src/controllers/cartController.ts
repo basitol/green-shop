@@ -389,17 +389,25 @@ export const clearCart: RequestHandler = async (
 
     const cart = await Cart.findOneAndUpdate(
       {user: req.user._id},
-      {items: []},
+      {
+        items: [],
+        subtotal: 0,  // Reset subtotal
+        shipping: 0,  // Reset shipping
+        total: 0      // Reset total
+      },
       {new: true},
     );
+
     if (!cart) {
       res.status(404).json({success: false, message: 'Cart not found'});
       return;
     }
 
-    res
-      .status(200)
-      .json({success: true, data: cart, message: 'Cart cleared successfully'});
+    res.status(200).json({
+      success: true,
+      data: cart,
+      message: 'Cart cleared successfully',
+    });
   } catch (error) {
     res.status(500).json({
       success: false,
