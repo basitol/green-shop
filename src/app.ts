@@ -15,16 +15,11 @@ import {errorHandler} from './middleware/errorMiddleware';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const MONGODB_URI =
-  process.env.MONGODB_URI || 'mongodb://localhost:27017/ecommerce';
 
-// CORS configuration options
+// CORS configuration
 const corsOptions = {
-  origin: process.env.ALLOWED_ORIGINS || '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true,
-  optionsSuccessStatus: 200,
 };
 
 // Middleware
@@ -38,15 +33,6 @@ app.use(
   expressFileUpload({
     useTempFiles: true,
     tempFileDir: '/tmp/',
-    debug: false,
-    limits: {fileSize: 50 * 1024 * 1024}, // 50MB max file size
-    parseNested: true,
-    createParentPath: true,
-    safeFileNames: true,
-    preserveExtension: true,
-    abortOnLimit: true,
-    responseOnLimit: 'File size limit exceeded',
-    uploadTimeout: 60000, // 1 minute timeout
   }),
 );
 
@@ -54,20 +40,35 @@ app.use(
 app.use('/api', routes);
 app.use('/payments', paymentRoutes);
 
-// Error handling
+// Error handling middleware
 app.use(errorHandler);
 
-// MongoDB connection
-mongoose
-  .connect(MONGODB_URI)
-  .then(() => {
-    console.log('Connected to MongoDB');
-    app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
+// MongoDB connection with retry logic
+const connectDB = async () => {
+  try {
+    const MONGODB_URI = process.env.MONGODB_URI;
+    
+    if (!MONGODB_URI) {
+      throw new Error('MongoDB connection string is not defined in environment variables');
+    }
+
+    await mongoose.connect(MONGODB_URI, {
+      // Add connection options here if needed
     });
-  })
-  .catch(error => {
+    
+    console.log('Connected to MongoDB successfully');
+  } catch (error) {
     console.error('MongoDB connection error:', error);
+    // Retry connection after 5 seconds
+    setTimeout(connectDB, 5000);
+  }
+};
+
+// Start server only after DB connection
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
   });
+});
 
 export default app;

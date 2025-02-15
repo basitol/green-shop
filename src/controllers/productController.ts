@@ -36,7 +36,10 @@ export const getAllProducts: RequestHandler = async (
   next: NextFunction,
 ) => {
   try {
-    const products = await Product.find().populate('category', 'name description');
+    const products = await Product.find().populate(
+      'category',
+      'name description',
+    );
     res.status(200).json({
       success: true,
       data: products,
@@ -85,7 +88,8 @@ export const createProduct = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const {name, description, color, storage, price, stock, category} = req.body;
+    const {name, description, color, storage, price, stock, category} =
+      req.body;
 
     // Verify category exists
     const categoryExists = await Category.findById(category);
@@ -382,7 +386,7 @@ export const getProductsByCategory = catchAsyncErrors(
   async (req: Request, res: Response<ApiResponse<ProductType[]>>) => {
     try {
       const categoryId = req.params.categoryId;
-      const { sort, minPrice, maxPrice } = req.query;
+      const {sort, minPrice, maxPrice} = req.query;
 
       // Verify category exists
       const category = await Category.findById(categoryId);
@@ -394,11 +398,11 @@ export const getProductsByCategory = catchAsyncErrors(
       }
 
       // Build query
-      let query = Product.find({ category: categoryId });
+      let query = Product.find({category: categoryId});
 
       // Apply price filters if provided
       if (minPrice || maxPrice) {
-        const priceFilter: { $gte?: number; $lte?: number } = {};
+        const priceFilter: {$gte?: number; $lte?: number} = {};
         if (minPrice) priceFilter.$gte = Number(minPrice);
         if (maxPrice) priceFilter.$lte = Number(maxPrice);
         query = query.where('price').equals(priceFilter);
@@ -407,7 +411,7 @@ export const getProductsByCategory = catchAsyncErrors(
       // Apply sorting if provided
       if (sort) {
         const sortOrder = sort === 'desc' ? -1 : 1;
-        query = query.sort({ price: sortOrder });
+        query = query.sort({price: sortOrder});
       }
 
       // Execute query with category population

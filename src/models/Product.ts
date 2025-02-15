@@ -78,7 +78,7 @@ const ProductSchema: Schema = new Schema(
     category: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Category',
-      required: [true, 'Product category is required']
+      required: [true, 'Product category is required'],
     },
   },
   {timestamps: true},
