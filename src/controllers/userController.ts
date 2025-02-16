@@ -137,13 +137,14 @@ export const register: RequestHandler = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const { firstName, lastName, email, password } = req.body;
+    const {firstName, lastName, email, password} = req.body;
 
     // Validate required fields
     if (!firstName || !lastName || !email || !password) {
       res.status(400).json({
         success: false,
-        message: 'Missing required fields. Please provide firstName, lastName, email, and password.',
+        message:
+          'Missing required fields. Please provide firstName, lastName, email, and password.',
         error: 'VALIDATION_ERROR',
       });
       return;
@@ -164,18 +165,20 @@ export const register: RequestHandler = async (
     if (!passwordSchema.validate(password)) {
       res.status(400).json({
         success: false,
-        message: 'Password must be at least 8 characters long and include uppercase, lowercase, number, and special character.',
+        message:
+          'Password must be at least 8 characters long and include uppercase, lowercase, number, and special character.',
         error: 'WEAK_PASSWORD',
       });
       return;
     }
 
     // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({email});
     if (existingUser) {
       res.status(409).json({
         success: false,
-        message: 'An account with this email already exists. Please use a different email or try logging in.',
+        message:
+          'An account with this email already exists. Please use a different email or try logging in.',
         error: 'EMAIL_EXISTS',
       });
       return;
@@ -196,7 +199,9 @@ export const register: RequestHandler = async (
     } catch (saveError: any) {
       // Handle mongoose validation errors
       if (saveError.name === 'ValidationError') {
-        const validationErrors = Object.values(saveError.errors).map((err: any) => err.message);
+        const validationErrors = Object.values(saveError.errors).map(
+          (err: any) => err.message,
+        );
         res.status(400).json({
           success: false,
           message: 'Validation failed',
@@ -216,7 +221,7 @@ export const register: RequestHandler = async (
       // Continue with registration even if email fails
     }
 
-    const { password: _, ...userWithoutPassword } = user.toObject();
+    const {password: _, ...userWithoutPassword} = user.toObject();
 
     res.status(201).json({
       success: true,
@@ -227,7 +232,8 @@ export const register: RequestHandler = async (
     console.error('Registration error:', error);
     res.status(500).json({
       success: false,
-      message: 'An unexpected error occurred during registration. Please try again later.',
+      message:
+        'An unexpected error occurred during registration. Please try again later.',
       error: 'SERVER_ERROR',
     });
   }
@@ -239,7 +245,13 @@ export const login: RequestHandler = async (
   res: Response<
     ApiResponse<{
       token: string;
-      user: {id: string; firstName: string; lastName: string; email: string; role: string};
+      user: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        role: string;
+      };
     }>
   >,
   next: NextFunction,
@@ -262,13 +274,13 @@ export const login: RequestHandler = async (
       return;
     }
 
-    console.log('Found user:', {
-      email: user.email,
-      hashedPassword: user.password,
-    });
+    // console.log('Found user:', {
+    //   email: user.email,
+    //   hashedPassword: user.password,
+    // });
 
     const isMatch = await bcrypt.compare(password, user.password);
-    console.log('Password comparison:', {isMatch, providedPassword: password});
+    // console.log('Password comparison:', {isMatch, providedPassword: password});
 
     if (!isMatch) {
       res
@@ -451,22 +463,54 @@ export const forgotPassword: RequestHandler = async (
     const {email} = req.body;
 
     if (!email) {
-      res
-        .status(400)
-        .json({success: false, message: MESSAGES.PASSWORD.EMAIL_REQUIRED});
+      res.status(400).json({
+        success: false,
+        message: MESSAGES.PASSWORD.EMAIL_REQUIRED,
+      });
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      res.status(400).json({
+        success: false,
+        message: 'Please provide a valid email address.',
+      });
       return;
     }
 
     const user = await User.findOne({email});
 
-    // Always return the same message whether user exists or not
+    // For non-existent users, log and return generic success message
     if (!user) {
+      // Log for monitoring, but don't expose this to the client
+      console.log(`Password reset attempted for non-existent email: ${email}`);
+
+      // Wait for a small random delay to prevent timing attacks
+      await new Promise(resolve =>
+        setTimeout(resolve, Math.floor(Math.random() * 1000)),
+      );
+
       res.status(200).json({
         success: true,
         message: MESSAGES.PASSWORD.RESET_EMAIL_SENT,
       });
       return;
     }
+
+    // Check if a reset was requested recently
+    // const resetCooldown = 5 * 60 * 1000; // 5 minutes
+    // if (
+    //   user.resetTokenExpiry &&
+    //   user.resetTokenExpiry.getTime() > Date.now() - resetCooldown
+    // ) {
+    //   res.status(429).json({
+    //     success: false,
+    //     message: 'Please wait 5 minutes before requesting another reset',
+    //   });
+    //   return;
+    // }
 
     // Generate reset token
     const resetToken = crypto.randomBytes(32).toString('hex');
@@ -477,7 +521,7 @@ export const forgotPassword: RequestHandler = async (
     user.resetTokenExpiry = resetTokenExpiry;
     await user.save();
 
-    // Send reset email using the new email service
+    // Check email service
     if (!emailService) {
       console.error('Email service is not initialized');
       res.status(500).json({
@@ -495,6 +539,7 @@ export const forgotPassword: RequestHandler = async (
       });
     } catch (emailError) {
       console.error('Failed to send password reset email:', emailError);
+
       // Revert the token save since email failed
       user.resetToken = undefined;
       user.resetTokenExpiry = undefined;

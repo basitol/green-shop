@@ -12,6 +12,7 @@ import cors from 'cors';
 import routes from './routes';
 import paymentRoutes from './routes/PaymentRoutes';
 import {errorHandler} from './middleware/errorMiddleware';
+import {initializeAdmin} from './utils/initializeAdmin';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -50,19 +51,18 @@ app.use(errorHandler);
 const connectDB = async () => {
   try {
     const MONGODB_URI = process.env.MONGODB_URI;
-    
+
     if (!MONGODB_URI) {
-      throw new Error('MongoDB connection string is not defined in environment variables');
+      throw new Error('MongoDB connection string is not defined');
     }
 
-    await mongoose.connect(MONGODB_URI, {
-      // Add connection options here if needed
-    });
-    
+    await mongoose.connect(MONGODB_URI, {});
     console.log('Connected to MongoDB successfully');
+
+    // Initialize admin accounts after successful connection
+    await initializeAdmin();
   } catch (error) {
     console.error('MongoDB connection error:', error);
-    // Retry connection after 5 seconds
     setTimeout(connectDB, 5000);
   }
 };
