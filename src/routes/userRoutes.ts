@@ -1,6 +1,6 @@
 import express from 'express';
 import * as userController from '../controllers/userController';
-import { authenticate, authorizeAdmin } from '../middleware/authMiddleware';
+import {authenticate, authorizeAdmin} from '../middleware/authMiddleware';
 
 const router = express.Router();
 
@@ -15,8 +15,16 @@ interface AuthenticatedRequest extends express.Request {
 // Public routes
 router.post('/register', userController.register);
 router.post('/login', userController.loginLimiter, userController.login);
-router.post('/forgot-password', userController.passwordResetLimiter, userController.forgotPassword);
-router.post('/reset-password', userController.passwordResetLimiter, userController.resetPassword);
+router.post(
+  '/forgot-password',
+  // userController.passwordResetLimiter,
+  userController.forgotPassword,
+);
+router.post(
+  '/reset-password',
+  userController.passwordResetLimiter,
+  userController.resetPassword,
+);
 
 // Authenticated user routes
 router.get('/profile', authenticate, (req, res, next) => {
@@ -29,19 +37,49 @@ router.put('/profile', authenticate, (req, res, next) => {
 });
 
 // Admin routes
-router.get('/admin/list', authenticate, authorizeAdmin, userController.getAllUsers);
+router.get(
+  '/admin/list',
+  authenticate,
+  authorizeAdmin,
+  userController.getAllUsers,
+);
 
-router.get('/admin/:id', authenticate, authorizeAdmin, userController.getUserById);
+router.get(
+  '/admin/:id',
+  authenticate,
+  authorizeAdmin,
+  userController.getUserById,
+);
 
-router.put('/admin/:id', authenticate, authorizeAdmin, userController.updateUser);
+router.put(
+  '/admin/:id',
+  authenticate,
+  authorizeAdmin,
+  userController.updateUser,
+);
 
-router.delete('/admin/:id', authenticate, authorizeAdmin, userController.deleteUser);
+router.delete(
+  '/admin/:id',
+  authenticate,
+  authorizeAdmin,
+  userController.deleteUser,
+);
 
-router.patch('/admin/:id/role', authenticate, authorizeAdmin, userController.updateUserRole);
+router.patch(
+  '/admin/:id/role',
+  authenticate,
+  authorizeAdmin,
+  userController.updateUserRole,
+);
 
-router.get('/admin/token', authenticate, authorizeAdmin, (req, res, next) => {
-  const authenticatedReq = req as AuthenticatedRequest;
-  userController.generateAdminCreationToken(authenticatedReq, res, next);
-});
+router.get(
+  '/generate-admin-token',
+  authenticate,
+  authorizeAdmin,
+  (req, res, next) => {
+    const authenticatedReq = req as AuthenticatedRequest;
+    userController.generateAdminCreationToken(authenticatedReq, res, next);
+  },
+);
 
 export default router;
