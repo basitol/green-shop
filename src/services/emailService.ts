@@ -1,8 +1,9 @@
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 import * as fs from 'fs';
 import * as path from 'path';
 import Handlebars from 'handlebars';
 import dotenv from 'dotenv';
+import {emailConfig} from '../config/emailConfig';
 
 // Load environment variables
 dotenv.config();
@@ -23,7 +24,7 @@ class EmailError extends Error {
 }
 
 export class EmailService {
-  private resend: Resend;
+  private transporter: nodemailer.Transporter;
   private templates: Map<string, Handlebars.TemplateDelegate>;
   private isDevelopment: boolean;
   private allowedTestEmail: string;
@@ -32,37 +33,66 @@ export class EmailService {
 
   constructor() {
     console.log('Initializing EmailService...');
-    
-    // Validate required environment variables
-    const requiredEnvVars = ['RESEND_API_KEY', 'RESEND_FROM_EMAIL', 'FRONTEND_URL'];
-    const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
-    
-    if (missingVars.length > 0) {
-      throw new EmailError(`Missing required environment variables: ${missingVars.join(', ')}`, 'CONFIG_ERROR');
-    }
 
     this.isDevelopment = process.env.NODE_ENV !== 'production';
-    this.allowedTestEmail = process.env.ALLOWED_TEST_EMAIL || 'basitolaitan27@gmail.com';
-    
-    console.log('Environment:', this.isDevelopment ? 'Development' : 'Production');
-    console.log('Environment variables validated');
-    
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) {
-      throw new EmailError('RESEND_API_KEY is not defined in environment variables', 'CONFIG_ERROR');
+
+    // In development, allow a fallback for email password
+    if (!process.env.EMAIL_PASSWORD) {
+      if (this.isDevelopment) {
+        console.warn(
+          'EMAIL_PASSWORD not set, using development mode with console logging',
+        );
+        // Set up a mock transporter for development
+        this.transporter = nodemailer.createTransport({
+          jsonTransport: true, // This will just log the email data
+        });
+      } else {
+        throw new EmailError('EMAIL_PASSWORD is not defined', 'CONFIG_ERROR');
+      }
+    } else {
+      // Initialize SMTP transporter with proper typing
+      this.transporter = nodemailer.createTransport({
+        ...emailConfig.smtp,
+        auth: {
+          ...emailConfig.smtp.auth,
+          pass: process.env.EMAIL_PASSWORD,
+        },
+      });
+
+      // Verify SMTP connection
+      this.transporter.verify(error => {
+        if (error) {
+          console.error('SMTP connection error:', error);
+        } else {
+          console.log('SMTP server is ready to send emails');
+        }
+      });
     }
-    this.resend = new Resend(apiKey);
+
+    this.allowedTestEmail =
+      process.env.ALLOWED_TEST_EMAIL || 'basitolaitan27@gmail.com';
+
+    console.log(
+      'Environment:',
+      this.isDevelopment ? 'Development' : 'Production',
+    );
+    console.log('Environment variables validated');
+
     this.templates = this.loadTemplates();
   }
 
   private validateEnvironment(): void {
-    const requiredVars = ['RESEND_API_KEY', 'RESEND_FROM_EMAIL', 'FRONTEND_URL'];
+    const requiredVars = [
+      'RESEND_API_KEY',
+      'RESEND_FROM_EMAIL',
+      'FRONTEND_URL',
+    ];
     const missing = requiredVars.filter(varName => !process.env[varName]);
 
     if (missing.length > 0) {
       throw new EmailError(
         `Missing required environment variables: ${missing.join(', ')}`,
-        'CONFIG_ERROR'
+        'CONFIG_ERROR',
       );
     }
   }
@@ -75,13 +105,13 @@ export class EmailService {
       'order-status-update',
       'admin-order-notification',
       'password-reset',
-      'welcome-email'
+      'welcome-email',
     ];
 
     templateNames.forEach(name => {
       const templatePath = path.join(__dirname, `../templates/${name}.hbs`);
       console.log(`Looking for template: ${templatePath}`);
-      
+
       if (fs.existsSync(templatePath)) {
         try {
           const templateContent = fs.readFileSync(templatePath, 'utf-8');
@@ -101,7 +131,7 @@ export class EmailService {
 
   private async retryOperation<T>(
     operation: () => Promise<T>,
-    retryCount: number = 0
+    retryCount: number = 0,
   ): Promise<T> {
     try {
       return await operation();
@@ -122,61 +152,57 @@ export class EmailService {
     data,
     retryCount = 0,
   }: EmailOptions): Promise<void> {
-    // In development, redirect all emails to the allowed test email
-    const recipientEmail = this.isDevelopment ? this.allowedTestEmail : to;
-    
-    console.log('Attempting to send email:', {
-      to,
-      actualRecipient: recipientEmail,
-      subject,
-      fromEmail: process.env.RESEND_FROM_EMAIL,
-      mode: this.isDevelopment ? 'Development' : 'Production'
-    });
+    const recipientEmail = this.isDevelopment
+      ? process.env.ALLOWED_TEST_EMAIL || to
+      : to;
 
     try {
-      this.validateEnvironment();
-
       const templateFn = this.templates.get(template);
       if (!templateFn) {
-        throw new EmailError(`Template ${template} not found`, 'TEMPLATE_ERROR');
+        throw new EmailError(
+          `Template ${template} not found`,
+          'TEMPLATE_ERROR',
+        );
       }
 
       const html = templateFn(data);
-      const fromEmail = process.env.RESEND_FROM_EMAIL!;
 
       await this.retryOperation(async () => {
-        const result = await this.resend.emails.send({
-          from: fromEmail,
+        const result = await this.transporter.sendMail({
+          from: `"${emailConfig.from.name}" <${emailConfig.from.email}>`,
           to: recipientEmail,
-          subject: this.isDevelopment && to !== recipientEmail ? `[Original recipient: ${to}] ${subject}` : subject,
-          html
+          subject:
+            this.isDevelopment && to !== recipientEmail
+              ? `[TEST] ${subject}`
+              : subject,
+          html,
         });
-        console.log('Email sent successfully:', result);
+        console.log('Email sent successfully:', result.messageId);
       }, retryCount);
     } catch (error) {
       console.error('Error sending email:', error);
-      console.error('Email options:', {
-        from: process.env.RESEND_FROM_EMAIL,
-        to: recipientEmail,
-        subject
-      });
       throw new EmailError(
-        `Failed to send email: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        error instanceof Error ? error.message : 'UNKNOWN_ERROR'
+        `Failed to send email: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+        'SMTP_ERROR',
       );
     }
   }
 
   public async sendWelcomeEmail(
     email: string,
-    fullName: string
+    fullName: string,
   ): Promise<void> {
     console.log('Preparing welcome email for:', fullName);
 
     const template = this.templates.get('welcome-email');
     if (!template) {
       console.error('Welcome email template not found!');
-      throw new EmailError('Template welcome-email not found', 'TEMPLATE_ERROR');
+      throw new EmailError(
+        'Template welcome-email not found',
+        'TEMPLATE_ERROR',
+      );
     }
 
     const templateData = {
@@ -184,30 +210,33 @@ export class EmailService {
       email,
       shopUrl: process.env.FRONTEND_URL,
       year: new Date().getFullYear(),
-      address: process.env.COMPANY_ADDRESS || 'Your Eco-Friendly Phone Shop'
+      address: process.env.COMPANY_ADDRESS || 'Your Eco-Friendly Phone Shop',
     };
-    
+
     console.log('Template data:', templateData);
 
     const html = template(templateData);
-    
+
     console.log('Generated HTML length:', html.length);
 
     await this.sendEmail({
       to: email,
       subject: 'Welcome to Green Phone Shop! 🌱📱',
       template: 'welcome-email',
-      data: templateData
+      data: templateData,
     });
   }
 
   public async sendPasswordResetEmail(
     to: string,
-    resetToken: string
+    resetToken: string,
   ): Promise<void> {
     const template = this.templates.get('password-reset');
     if (!template) {
-      throw new EmailError('Template password-reset not found', 'TEMPLATE_ERROR');
+      throw new EmailError(
+        'Template password-reset not found',
+        'TEMPLATE_ERROR',
+      );
     }
 
     const resetUrl = `${process.env.FRONTEND_URL}/api/users/reset-password`;
@@ -220,14 +249,14 @@ export class EmailService {
         resetUrl,
         resetToken,
         siteName: 'Green Phone Shop',
-        validityPeriod: '1 hour'
-      }
+        validityPeriod: '1 hour',
+      },
     });
   }
 
   public async sendOrderConfirmationEmail(
     to: string,
-    orderData: Record<string, any>
+    orderData: Record<string, any>,
   ): Promise<void> {
     await this.sendEmail({
       to,
@@ -235,14 +264,14 @@ export class EmailService {
       template: 'order-confirmation',
       data: {
         ...orderData,
-        siteName: 'Green Phone Shop'
-      }
+        siteName: 'Green Phone Shop',
+      },
     });
   }
 
   public async sendOrderStatusUpdateEmail(
     to: string,
-    statusData: Record<string, any>
+    statusData: Record<string, any>,
   ): Promise<void> {
     await this.sendEmail({
       to,
@@ -250,17 +279,20 @@ export class EmailService {
       template: 'order-status-update',
       data: {
         ...statusData,
-        siteName: 'Green Phone Shop'
-      }
+        siteName: 'Green Phone Shop',
+      },
     });
   }
 
   public async sendAdminOrderNotificationEmail(
-    orderData: Record<string, any>
+    orderData: Record<string, any>,
   ): Promise<void> {
     const adminEmail = process.env.ADMIN_EMAIL;
     if (!adminEmail) {
-      throw new EmailError('ADMIN_EMAIL is not defined in environment variables', 'CONFIG_ERROR');
+      throw new EmailError(
+        'ADMIN_EMAIL is not defined in environment variables',
+        'CONFIG_ERROR',
+      );
     }
 
     await this.sendEmail({
@@ -269,8 +301,8 @@ export class EmailService {
       template: 'admin-order-notification',
       data: {
         ...orderData,
-        siteName: 'Green Phone Shop'
-      }
+        siteName: 'Green Phone Shop',
+      },
     });
   }
 }

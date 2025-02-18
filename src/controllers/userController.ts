@@ -555,19 +555,20 @@ export const forgotPassword: RequestHandler = async (
   }
 };
 
-// Reset password with token
+// Reset password (simplified version)
 export const resetPassword: RequestHandler = async (
   req: Request,
   res: Response<ApiResponse<null>>,
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const {token, newPassword} = req.body;
+    const {email, newPassword} = req.body;
 
-    if (!token || !newPassword) {
+
+    if (!email || !newPassword) {
       res.status(400).json({
         success: false,
-        message: MESSAGES.PASSWORD.TOKEN_REQUIRED,
+        message: 'Email and new password are required',
       });
       return;
     }
@@ -581,32 +582,22 @@ export const resetPassword: RequestHandler = async (
       return;
     }
 
-    const user = await User.findOne({
-      resetToken: token,
-      resetTokenExpiry: {$gt: new Date()},
-    });
-
+    const user = await User.findOne({email});
     if (!user) {
-      res.status(400).json({
+      res.status(404).json({
         success: false,
-        message: MESSAGES.PASSWORD.INVALID_RESET_TOKEN,
+        message: 'User not found',
       });
       return;
     }
 
-    // Hash new password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(newPassword, salt);
-
-    // Update user password and clear reset token
-    user.password = hashedPassword;
-    user.resetToken = undefined;
-    user.resetTokenExpiry = undefined;
+    // Set the new password - let the User model's pre-save middleware handle hashing
+    user.password = newPassword;
     await user.save();
 
     res.status(200).json({
       success: true,
-      message: MESSAGES.PASSWORD.RESET_SUCCESS,
+      message: 'Password updated successfully',
     });
   } catch (error) {
     next(error);

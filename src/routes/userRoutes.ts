@@ -15,16 +15,7 @@ interface AuthenticatedRequest extends express.Request {
 // Public routes
 router.post('/register', userController.register);
 router.post('/login', userController.loginLimiter, userController.login);
-router.post(
-  '/forgot-password',
-  // userController.passwordResetLimiter,
-  userController.forgotPassword,
-);
-router.post(
-  '/reset-password',
-  userController.passwordResetLimiter,
-  userController.resetPassword,
-);
+router.post('/forgot-password', userController.forgotPassword);
 
 // Authenticated user routes
 router.get('/profile', authenticate, (req, res, next) => {
@@ -81,5 +72,8 @@ router.get(
     userController.generateAdminCreationToken(authenticatedReq, res, next);
   },
 );
+
+// Update reset password route to not require token
+router.post('/reset-password', userController.resetPassword);
 
 export default router;
