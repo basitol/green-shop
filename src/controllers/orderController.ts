@@ -22,16 +22,16 @@ interface ICart {
 // Helper function to generate order number
 async function generateOrderNumber(): Promise<string> {
   try {
-    const lastOrder = await Order.findOne().sort({ createdAt: -1 });
+    const lastOrder = await Order.findOne().sort({createdAt: -1});
     if (!lastOrder || !lastOrder.orderNumber) {
       return 'ORD-0001';
     }
-    
+
     const matches = lastOrder.orderNumber.match(/ORD-(\d+)/);
     if (!matches) {
       return 'ORD-0001';
     }
-    
+
     const lastNumber = parseInt(matches[1]);
     const nextNumber = lastNumber + 1;
     return `ORD-${nextNumber.toString().padStart(4, '0')}`;
@@ -49,10 +49,13 @@ function generatePaymentId(): string {
 }
 
 // Create a new order
-export const createOrder = async (req: Request, res: Response): Promise<void> => {
+export const createOrder = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
     const userId = req.user?._id;
-    const { cartId, shippingAddress, paymentId } = req.body;
+    const {cartId, shippingAddress, paymentId, orderId} = req.body;
 
     if (!userId) {
       res.status(401).json({
@@ -62,7 +65,7 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    const cart = await Cart.findById(cartId).populate<{ items: ICartItem[] }>(
+    const cart = await Cart.findById(cartId).populate<{items: ICartItem[]}>(
       'items.product',
     );
     if (!cart || cart.items.length === 0) {
@@ -94,7 +97,7 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
     const orderItems = cart.items.map(item => ({
       productId: item.product._id,
       quantity: item.quantity,
-      price: item.price
+      price: item.price,
     }));
 
     // Create the order
@@ -102,18 +105,19 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
       orderNumber,
       user: userId,
       items: orderItems,
+      orderId: orderId,
       totalAmount,
       shippingAddress: {
         ...shippingAddress,
-        phone: shippingAddress.phone.toString()
+        phone: shippingAddress.phone.toString(),
       },
       payment: {
         provider: 'paypal',
         transactionId: actualPaymentId,
         status: 'pending',
         paidAmount: totalAmount,
-        paidAt: new Date()
-      }
+        paidAt: new Date(),
+      },
     });
 
     await order.save();
@@ -124,14 +128,14 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
     res.status(201).json({
       success: true,
       message: 'Order created successfully',
-      data: order
+      data: order,
     });
   } catch (error) {
     console.error('Error creating order:', error);
     res.status(500).json({
       success: false,
       message: 'Error creating order',
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 };
@@ -166,7 +170,10 @@ export const getOrders = async (req: Request, res: Response): Promise<void> => {
 };
 
 // Get specific order by ID
-export const getOrderById = async (req: Request, res: Response): Promise<void> => {
+export const getOrderById = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
     const {id} = req.params;
     const userId = req.user?._id;
@@ -208,7 +215,13 @@ export const updateOrderStatus = async (
     const userId = req.user?._id;
 
     // Validate status
-    const validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+    const validStatuses = [
+      'pending',
+      'processing',
+      'shipped',
+      'delivered',
+      'cancelled',
+    ];
     if (!validStatuses.includes(status)) {
       res.status(400).json({
         success: false,
@@ -250,13 +263,16 @@ export const updateOrderStatus = async (
 };
 
 // Cancel order
-export const cancelOrder = async (req: Request, res: Response): Promise<void> => {
+export const cancelOrder = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
     const {id} = req.params;
     const {cancelReason} = req.body;
     const userId = req.user?._id;
 
-    const order = await Order.findOne({_id: id, user: userId}) as any;
+    const order = (await Order.findOne({_id: id, user: userId})) as any;
 
     if (!order) {
       res.status(404).json({
@@ -340,7 +356,10 @@ export const getOrdersByDateRange = async (
 };
 
 // Get order statistics
-export const getOrderStats = async (req: Request, res: Response): Promise<void> => {
+export const getOrderStats = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
     const userId = req.user?._id;
 
@@ -392,7 +411,10 @@ export const getOrderStats = async (req: Request, res: Response): Promise<void> 
 };
 
 // Get all orders (admin only)
-export const getAllOrders = async (req: Request, res: Response): Promise<void> => {
+export const getAllOrders = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
     const user = req.user as IUser;
     // Check if user is admin
@@ -410,16 +432,20 @@ export const getAllOrders = async (req: Request, res: Response): Promise<void> =
     const sortBy = (req.query.sortBy as string) || 'createdAt';
     const sortOrder = (req.query.sortOrder as string) === 'asc' ? 1 : -1;
     const status = req.query.status as string;
-    const startDate = req.query.startDate ? new Date(req.query.startDate as string) : null;
-    const endDate = req.query.endDate ? new Date(req.query.endDate as string) : null;
+    const startDate = req.query.startDate
+      ? new Date(req.query.startDate as string)
+      : null;
+    const endDate = req.query.endDate
+      ? new Date(req.query.endDate as string)
+      : null;
 
     // Build filter object
     const filter: any = {};
-    
+
     if (status) {
       filter.status = status;
     }
-    
+
     if (startDate || endDate) {
       filter.createdAt = {};
       if (startDate) {
@@ -439,7 +465,7 @@ export const getAllOrders = async (req: Request, res: Response): Promise<void> =
 
     // Get orders with pagination and sorting
     const orders = await Order.find(filter)
-      .sort({ [sortBy]: sortOrder })
+      .sort({[sortBy]: sortOrder})
       .skip(skip)
       .limit(limit)
       .populate('user', 'firstName lastName email')
@@ -455,16 +481,16 @@ export const getAllOrders = async (req: Request, res: Response): Promise<void> =
           totalPages,
           totalItems: totalOrders,
           hasNextPage: page < totalPages,
-          hasPrevPage: page > 1
-        }
-      }
+          hasPrevPage: page > 1,
+        },
+      },
     });
   } catch (error) {
     console.error('Error fetching orders:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching orders',
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 };

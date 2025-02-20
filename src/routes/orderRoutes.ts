@@ -7,7 +7,7 @@ import {
   cancelOrder,
   getOrdersByDateRange,
   getOrderStats,
-  getAllOrders
+  getAllOrders,
 } from '../controllers/orderController';
 import {authenticate, authorizeAdmin} from '../middleware/authMiddleware';
 

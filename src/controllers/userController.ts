@@ -582,7 +582,9 @@ export const resetPassword: RequestHandler = async (
       return;
     }
 
+    
     const user = await User.findOne({email});
+    console.log(user)
     if (!user) {
       res.status(404).json({
         success: false,
@@ -593,6 +595,7 @@ export const resetPassword: RequestHandler = async (
 
     // Set the new password - let the User model's pre-save middleware handle hashing
     user.password = newPassword;
+    console.log(newPassword);
     await user.save();
 
     res.status(200).json({
