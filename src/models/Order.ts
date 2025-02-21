@@ -31,6 +31,7 @@ export interface IOrder extends Document {
   cancelledAt?: Date;
   createdAt: Date;
   updatedAt: Date;
+  paymentStatus: 'pending' | 'completed' | 'failed' | 'refunded';
 }
 
 const OrderSchema = new Schema(
@@ -77,6 +78,11 @@ const OrderSchema = new Schema(
       },
       paidAmount: {type: Number, required: true},
       paidAt: {type: Date},
+    },
+    paymentStatus: {
+      type: String,
+      enum: ['pending', 'completed', 'failed', 'refunded'],
+      required: true,
     },
     cancelReason: {type: String},
     cancelledAt: {type: Date},
