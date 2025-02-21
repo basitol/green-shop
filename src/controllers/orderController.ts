@@ -55,7 +55,8 @@ export const createOrder = async (
 ): Promise<void> => {
   try {
     const userId = req.user?._id;
-    const {cartId, shippingAddress, paymentId, orderId} = req.body;
+    const {cartId, shippingAddress, paymentId, orderId, paymentStatus} =
+      req.body;
 
     if (!userId) {
       res.status(401).json({
@@ -118,6 +119,7 @@ export const createOrder = async (
         paidAmount: totalAmount,
         paidAt: new Date(),
       },
+      paymentStatus: paymentStatus,
     });
 
     await order.save();
