@@ -36,7 +36,6 @@ async function generateOrderNumber(): Promise<string> {
     const nextNumber = lastNumber + 1;
     return `ORD-${nextNumber.toString().padStart(4, '0')}`;
   } catch (error) {
-    console.error('Error generating order number:', error);
     // Fallback to timestamp-based number if something goes wrong
     const timestamp = Date.now();
     return `ORD-${timestamp}`;
@@ -88,11 +87,9 @@ export const createOrder = async (
 
     // Generate order number first
     const orderNumber = await generateOrderNumber();
-    console.log('Generated order number:', orderNumber);
 
     // Generate unique payment ID for testing
     const actualPaymentId = paymentId || generatePaymentId();
-    console.log('Using payment ID:', actualPaymentId);
 
     // Create order items from cart items
     const orderItems = cart.items.map(item => ({
@@ -115,7 +112,7 @@ export const createOrder = async (
       payment: {
         provider: 'paypal',
         transactionId: actualPaymentId,
-        status: 'pending',
+        status: 'completed',
         paidAmount: totalAmount,
         paidAt: new Date(),
       },
@@ -132,12 +129,11 @@ export const createOrder = async (
       message: 'Order created successfully',
       data: order,
     });
-  } catch (error) {
-    console.error('Error creating order:', error);
+  } catch (error: any) {
     res.status(500).json({
       success: false,
       message: 'Error creating order',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: error.message,
     });
   }
 };
@@ -487,12 +483,11 @@ export const getAllOrders = async (
         },
       },
     });
-  } catch (error) {
-    console.error('Error fetching orders:', error);
+  } catch (error: any) {
     res.status(500).json({
       success: false,
       message: 'Error fetching orders',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: error.message,
     });
   }
 };
