@@ -10,6 +10,7 @@ import orderRoutes from './routes/orderRoutes';
 import userRoutes from './routes/userRoutes';
 import {authenticate, authorizeAdmin} from './middleware/authMiddleware';
 import categoryRoutes from './routes/categoryRoutes';
+import favoriteRoutes from './routes/favoriteRoutes';
 const router: Router = express.Router();
 
 // Update the AuthenticatedRequest type definition to include 'id' and 'role'
@@ -104,17 +105,17 @@ router.delete(
 router.delete('/clear', authenticate, cartController.clearCart);
 
 // Favorite routes
-router.get('/favorites', authenticate, favoriteController.getFavorites);
-router.post(
-  '/favorites/add/:productId',
-  authenticate,
-  favoriteController.addToFavorites,
-);
-router.delete(
-  '/favorites/remove/:productId',
-  authenticate,
-  favoriteController.removeFromFavorites,
-);
+// router.get('/favorites', authenticate, favoriteController.getFavorites);
+// router.post(
+//   '/favorites/add/:productId',
+//   authenticate,
+//   favoriteController.addToFavorites,
+// );
+// router.delete(
+//   '/favorites/remove/:productId',
+//   authenticate,
+//   favoriteController.removeFromFavorites,
+// );
 
 // router.post('/', authenticate, orderController.createOrder);
 // router.get('/', authenticate, orderController.getOrders);
@@ -128,5 +129,7 @@ router.use('/payments', paymentRoutes);
 router.use('/users', userRoutes);
 // Category routes
 router.use('/categories', categoryRoutes);
+// Favorite routes
+router.use('/favorites', favoriteRoutes);
 
 export default router;
