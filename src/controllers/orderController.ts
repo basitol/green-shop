@@ -76,16 +76,13 @@ export const createOrder = async (
       return;
     }
 
-    // Calculate totals
-    const subtotal = cart.items.reduce(
+    // Calculate total amount (just sum of items)
+    const totalAmount = cart.items.reduce(
       (total, item) => total + item.price * item.quantity,
-      0,
+      0
     );
-    const tax = subtotal * 0.1; // 10% tax
-    const shippingCost = subtotal > 100 ? 0 : 10; // Free shipping over $100
-    const totalAmount = subtotal + tax + shippingCost;
 
-    // Generate order number first
+    // Generate order number
     const orderNumber = await generateOrderNumber();
 
     // Generate unique payment ID for testing
