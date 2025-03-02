@@ -2,6 +2,7 @@ import {Request, Response} from 'express';
 import {Category} from '../models/Category';
 import {catchAsyncErrors} from '../middleware/catchAsyncErrors';
 import ErrorHandler from '../utils/errorHandler';
+import {Product} from '../models/Product';
 
 // Create new category
 export const createCategory = catchAsyncErrors(
@@ -80,17 +81,49 @@ export const updateCategory = catchAsyncErrors(
 // Delete category
 export const deleteCategory = catchAsyncErrors(
   async (req: Request, res: Response) => {
-    const category = await Category.findById(req.params.id);
+    const {id} = req.params;
+    const {moveTo} = req.query; // New parameter to specify target category
+
+    const category = await Category.findById(id);
 
     if (!category) {
       throw new ErrorHandler('Category not found', 404);
+    }
+
+    // Check if products are using this category
+    const productsCount = await Product.countDocuments({category: id});
+
+    if (productsCount > 0) {
+      // If moveTo parameter is provided, move products to that category
+      if (moveTo) {
+        // Verify target category exists
+        const targetCategory = await Category.findById(moveTo);
+        if (!targetCategory) {
+          return res.status(400).json({
+            success: false,
+            message: 'Target category not found',
+          });
+        }
+
+        // Move products to the target category
+        await Product.updateMany({category: id}, {$set: {category: moveTo}});
+      } else {
+        // If no target category specified, prevent deletion
+        return res.status(400).json({
+          success: false,
+          message: `Cannot delete category. ${productsCount} products are using this category. Use ?moveTo=categoryId to move products.`,
+        });
+      }
     }
 
     await category.deleteOne();
 
     res.status(200).json({
       success: true,
-      message: 'Category deleted successfully',
+      message:
+        productsCount > 0
+          ? `Category deleted successfully. ${productsCount} products moved to new category.`
+          : 'Category deleted successfully',
     });
   },
 );
