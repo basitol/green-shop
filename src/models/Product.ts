@@ -68,7 +68,7 @@ const ProductSchema: Schema = new Schema(
     name: {type: String, required: true},
     description: {type: String, required: true},
     color: {type: String, required: true},
-    storage: {type: String, required: true},
+    storage: {type: String, required: false},
     price: {type: Number, required: true},
     stock: {type: Number, required: true},
     rating: {type: Number, default: 0},
