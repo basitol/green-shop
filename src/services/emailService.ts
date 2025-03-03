@@ -42,12 +42,12 @@ export class EmailService {
 
     // Initialize SMTP transporter with Brevo settings
     this.transporter = nodemailer.createTransport({
-      host: 'smtp-relay.brevo.com',
-      port: 587,
-      secure: false, // true for 465, false for other ports
+      host: process.env.BREVO_SMTP_HOST || 'smtp-relay.brevo.com',
+      port: parseInt(process.env.BREVO_SMTP_PORT || '587'),
+      secure: process.env.BREVO_SMTP_PORT === '465', // true for 465, false for other ports
       auth: {
-        user: '7e955e001@smtp-brevo.com', // Brevo SMTP login
-        pass: '***REMOVED***' // Brevo SMTP key
+        user: process.env.BREVO_SMTP_USER || '',
+        pass: process.env.BREVO_SMTP_PASS || ''
       }
     });
 
