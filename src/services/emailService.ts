@@ -3,7 +3,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import Handlebars from 'handlebars';
 import dotenv from 'dotenv';
-import {emailConfig} from '../config/emailConfig';
 
 // Load environment variables
 dotenv.config();
@@ -30,71 +29,39 @@ export class EmailService {
   private allowedTestEmail: string;
   private readonly maxRetries = 3;
   private readonly retryDelay = 1000; // 1 second
+  private senderEmail: string;
+  private senderName: string;
 
   constructor() {
-    console.log('Initializing EmailService...');
+    console.log('Initializing Brevo SMTP Email Service...');
 
     this.isDevelopment = process.env.NODE_ENV !== 'production';
+    this.allowedTestEmail = process.env.ALLOWED_TEST_EMAIL || 'basitolaitan27@gmail.com';
+    this.senderEmail = process.env.BREVO_SENDER_EMAIL || 'info@greenphone-shop.com';
+    this.senderName = process.env.BREVO_SENDER_NAME || 'Green Phone Shop';
 
-    // In development, allow a fallback for email password
-    if (!process.env.EMAIL_PASSWORD) {
-      if (this.isDevelopment) {
-        console.warn(
-          'EMAIL_PASSWORD not set, using development mode with console logging',
-        );
-        // Set up a mock transporter for development
-        this.transporter = nodemailer.createTransport({
-          jsonTransport: true, // This will just log the email data
-        });
-      } else {
-        throw new EmailError('EMAIL_PASSWORD is not defined', 'CONFIG_ERROR');
+    // Initialize SMTP transporter with Brevo settings
+    this.transporter = nodemailer.createTransport({
+      host: 'smtp-relay.brevo.com',
+      port: 587,
+      secure: false, // true for 465, false for other ports
+      auth: {
+        user: '7e955e001@smtp-brevo.com', // Brevo SMTP login
+        pass: '***REMOVED***' // Brevo SMTP key
       }
-    } else {
-      // Initialize SMTP transporter with proper typing
-      this.transporter = nodemailer.createTransport({
-        ...emailConfig.smtp,
-        auth: {
-          ...emailConfig.smtp.auth,
-          pass: process.env.EMAIL_PASSWORD,
-        },
-      });
+    });
 
-      // Verify SMTP connection
-      this.transporter.verify(error => {
-        if (error) {
-          console.error('SMTP connection error:', error);
-        } else {
-          console.log('SMTP server is ready to send emails');
-        }
-      });
-    }
-
-    this.allowedTestEmail =
-      process.env.ALLOWED_TEST_EMAIL || 'basitolaitan27@gmail.com';
-
-    console.log(
-      'Environment:',
-      this.isDevelopment ? 'Development' : 'Production',
-    );
-    console.log('Environment variables validated');
+    // Verify connection
+    this.transporter.verify((error) => {
+      if (error) {
+        console.error('SMTP connection error:', error);
+      } else {
+        console.log('Brevo SMTP server is ready to send emails');
+      }
+    });
 
     this.templates = this.loadTemplates();
-  }
-
-  private validateEnvironment(): void {
-    const requiredVars = [
-      'RESEND_API_KEY',
-      'RESEND_FROM_EMAIL',
-      'FRONTEND_URL',
-    ];
-    const missing = requiredVars.filter(varName => !process.env[varName]);
-
-    if (missing.length > 0) {
-      throw new EmailError(
-        `Missing required environment variables: ${missing.join(', ')}`,
-        'CONFIG_ERROR',
-      );
-    }
+    console.log('Environment:', this.isDevelopment ? 'Development' : 'Production');
   }
 
   private loadTemplates(): Map<string, Handlebars.TemplateDelegate> {
@@ -153,7 +120,7 @@ export class EmailService {
     retryCount = 0,
   }: EmailOptions): Promise<void> {
     const recipientEmail = this.isDevelopment
-      ? process.env.ALLOWED_TEST_EMAIL || to
+      ? this.allowedTestEmail
       : to;
 
     try {
@@ -169,23 +136,22 @@ export class EmailService {
 
       await this.retryOperation(async () => {
         const result = await this.transporter.sendMail({
-          from: `"${emailConfig.from.name}" <${emailConfig.from.email}>`,
+          from: `"${this.senderName}" <${this.senderEmail}>`,
           to: recipientEmail,
-          subject:
-            this.isDevelopment && to !== recipientEmail
-              ? `[TEST] ${subject}`
-              : subject,
-          html,
+          subject: this.isDevelopment && to !== recipientEmail
+            ? `[TEST] ${subject}`
+            : subject,
+          html
         });
-        console.log('Email sent successfully:', result.messageId);
+        console.log('Email sent successfully via Brevo SMTP:', result.messageId);
       }, retryCount);
     } catch (error) {
-      console.error('Error sending email:', error);
+      console.error('Error sending email via Brevo SMTP:', error);
       throw new EmailError(
         `Failed to send email: ${
           error instanceof Error ? error.message : 'Unknown error'
         }`,
-        'SMTP_ERROR',
+        'EMAIL_ERROR',
       );
     }
   }
@@ -196,15 +162,6 @@ export class EmailService {
   ): Promise<void> {
     console.log('Preparing welcome email for:', fullName);
 
-    const template = this.templates.get('welcome-email');
-    if (!template) {
-      console.error('Welcome email template not found!');
-      throw new EmailError(
-        'Template welcome-email not found',
-        'TEMPLATE_ERROR',
-      );
-    }
-
     const templateData = {
       fullName,
       email,
@@ -212,12 +169,6 @@ export class EmailService {
       year: new Date().getFullYear(),
       address: process.env.COMPANY_ADDRESS || 'Your Eco-Friendly Phone Shop',
     };
-
-    console.log('Template data:', templateData);
-
-    const html = template(templateData);
-
-    console.log('Generated HTML length:', html.length);
 
     await this.sendEmail({
       to: email,
@@ -231,15 +182,7 @@ export class EmailService {
     to: string,
     resetToken: string,
   ): Promise<void> {
-    const template = this.templates.get('password-reset');
-    if (!template) {
-      throw new EmailError(
-        'Template password-reset not found',
-        'TEMPLATE_ERROR',
-      );
-    }
-
-    const resetUrl = `${process.env.FRONTEND_URL}/api/users/reset-password`;
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password`;
 
     await this.sendEmail({
       to,
