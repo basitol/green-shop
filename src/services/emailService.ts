@@ -124,6 +124,9 @@ export class EmailService {
       : to;
 
     try {
+      console.log(`Preparing to send email to: ${recipientEmail}`);
+      console.log(`Using SMTP settings: ${process.env.BREVO_SMTP_HOST}:${process.env.BREVO_SMTP_PORT}`);
+      
       const templateFn = this.templates.get(template);
       if (!templateFn) {
         throw new EmailError(
@@ -135,15 +138,25 @@ export class EmailService {
       const html = templateFn(data);
 
       await this.retryOperation(async () => {
-        const result = await this.transporter.sendMail({
+        console.log(`Sending email with subject: "${subject}"`);
+        
+        const mailOptions = {
           from: `"${this.senderName}" <${this.senderEmail}>`,
           to: recipientEmail,
           subject: this.isDevelopment && to !== recipientEmail
             ? `[TEST] ${subject}`
             : subject,
           html
-        });
-        console.log('Email sent successfully via Brevo SMTP:', result.messageId);
+        };
+        
+        console.log('Mail options:', JSON.stringify({
+          from: mailOptions.from,
+          to: mailOptions.to,
+          subject: mailOptions.subject
+        }));
+        
+        const result = await this.transporter.sendMail(mailOptions);
+        console.log('Email sent successfully via Brevo SMTP:', result);
       }, retryCount);
     } catch (error) {
       console.error('Error sending email via Brevo SMTP:', error);
