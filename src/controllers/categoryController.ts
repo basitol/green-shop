@@ -81,9 +81,9 @@ export const updateCategory = catchAsyncErrors(
 // Delete category
 export const deleteCategory = catchAsyncErrors(
   async (req: Request, res: Response) => {
-    const {id} = req.params;
-    const {moveTo} = req.query; // New parameter to specify target category
-
+    const { id } = req.params;
+    const { moveTo } = req.query; // New parameter to specify target category
+    
     const category = await Category.findById(id);
 
     if (!category) {
@@ -91,8 +91,8 @@ export const deleteCategory = catchAsyncErrors(
     }
 
     // Check if products are using this category
-    const productsCount = await Product.countDocuments({category: id});
-
+    const productsCount = await Product.countDocuments({ category: id });
+    
     if (productsCount > 0) {
       // If moveTo parameter is provided, move products to that category
       if (moveTo) {
@@ -104,9 +104,14 @@ export const deleteCategory = catchAsyncErrors(
             message: 'Target category not found',
           });
         }
-
+        
         // Move products to the target category
-        await Product.updateMany({category: id}, {$set: {category: moveTo}});
+        await Product.updateMany(
+          { category: id },
+          { $set: { category: moveTo } }
+        );
+        
+        console.log(`Moved ${productsCount} products to category ${moveTo}`);
       } else {
         // If no target category specified, prevent deletion
         return res.status(400).json({
@@ -120,10 +125,9 @@ export const deleteCategory = catchAsyncErrors(
 
     res.status(200).json({
       success: true,
-      message:
-        productsCount > 0
-          ? `Category deleted successfully. ${productsCount} products moved to new category.`
-          : 'Category deleted successfully',
+      message: productsCount > 0 
+        ? `Category deleted successfully. ${productsCount} products moved to new category.`
+        : 'Category deleted successfully',
     });
   },
 );

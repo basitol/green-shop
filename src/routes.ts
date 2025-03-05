@@ -22,29 +22,6 @@ interface AuthenticatedRequest extends express.Request {
   };
 }
 
-// User routes
-// router.post('/users/register', userController.register);
-// router.post('/users/login', userController.loginLimiter, userController.login);
-// router.post('/users/forgot-password', userController.passwordResetLimiter, userController.forgotPassword);
-// router.post('/users/reset-password', userController.passwordResetLimiter, userController.resetPassword);
-// router.get('/users/profile', authenticate, (req, res, next) => {
-//   const authenticatedReq = req as AuthenticatedRequest; // Type assertion
-//   userController.getProfile(authenticatedReq, res, next);
-// });
-// router.put('/users/profile', authenticate, (req, res, next) => {
-//   const authenticatedReq = req as AuthenticatedRequest; // Type assertion
-//   userController.updateProfile(authenticatedReq, res, next);
-// });
-// router.get(
-//   '/generate-admin-token',
-//   authenticate,
-//   authorizeAdmin,
-//   (req, res, next) => {
-//     const authenticatedReq = req as AuthenticatedRequest;
-//     userController.generateAdminCreationToken(authenticatedReq, res, next);
-//   },
-// );
-
 // Admin routes
 router.get(
   '/admin/users',
