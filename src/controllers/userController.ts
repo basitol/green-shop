@@ -6,6 +6,8 @@ import rateLimit from 'express-rate-limit';
 import User, {IUser, UserRole} from '../models/User';
 import passwordValidator from 'password-validator';
 import {EmailService} from '../services/emailService';
+import ErrorHandler from '../utils/errorHandler';
+import {catchAsyncErrors} from '../middleware/catchAsyncErrors';
 
 const emailService = new EmailService();
 
@@ -453,159 +455,85 @@ export const updateProfile: AuthenticatedRequestHandler = async (
   }
 };
 
-// Request password reset
-export const forgotPassword: RequestHandler = async (
-  req: Request,
-  res: Response<ApiResponse<null>>,
-  next: NextFunction,
-): Promise<void> => {
-  try {
+// Forgot Password
+export const forgotPassword = catchAsyncErrors(
+  async (req: Request, res: Response, next: NextFunction) => {
     const {email} = req.body;
 
-    if (!email) {
-      res.status(400).json({
-        success: false,
-        message: MESSAGES.PASSWORD.EMAIL_REQUIRED,
-      });
-      return;
-    }
-
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      res.status(400).json({
-        success: false,
-        message: 'Please provide a valid email address.',
-      });
-      return;
-    }
-
     const user = await User.findOne({email});
 
-    // For non-existent users, log and return generic success message
     if (!user) {
-      // Log for monitoring, but don't expose this to the client
-      console.log(`Password reset attempted for non-existent email: ${email}`);
-
-      // Wait for a small random delay to prevent timing attacks
-      await new Promise(resolve =>
-        setTimeout(resolve, Math.floor(Math.random() * 1000)),
-      );
-
-      res.status(200).json({
-        success: true,
-        message: MESSAGES.PASSWORD.RESET_EMAIL_SENT,
-      });
-      return;
+      return next(new ErrorHandler('User not found with this email', 404));
     }
-
-    // Check if a reset was requested recently
-    // const resetCooldown = 5 * 60 * 1000; // 5 minutes
-    // if (
-    //   user.resetTokenExpiry &&
-    //   user.resetTokenExpiry.getTime() > Date.now() - resetCooldown
-    // ) {
-    //   res.status(429).json({
-    //     success: false,
-    //     message: 'Please wait 5 minutes before requesting another reset',
-    //   });
-    //   return;
-    // }
 
     // Generate reset token
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetTokenExpiry = new Date(Date.now() + 1 * 60 * 60 * 1000); // 1 hour
+    const resetToken = crypto.randomBytes(20).toString('hex');
 
-    // Save reset token to user
-    user.resetToken = resetToken;
-    user.resetTokenExpiry = resetTokenExpiry;
-    await user.save();
+    // Hash and set to resetPasswordToken
+    user.resetPasswordToken = crypto
+      .createHash('sha256')
+      .update(resetToken)
+      .digest('hex');
 
-    // Check email service
-    if (!emailService) {
-      console.error('Email service is not initialized');
-      res.status(500).json({
-        success: false,
-        message: MESSAGES.EMAIL.SERVICE_ERROR,
-      });
-      return;
-    }
+    // Set token expiry time
+    user.resetPasswordExpire = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+
+    await user.save({validateBeforeSave: false});
 
     try {
-      await emailService.sendPasswordResetEmail(email, resetToken);
+      await emailService.sendPasswordResetEmail(user.email, resetToken);
+
       res.status(200).json({
         success: true,
-        message: MESSAGES.PASSWORD.RESET_EMAIL_SENT,
+        message: `Email sent to: ${user.email}`,
       });
-    } catch (emailError) {
-      console.error('Failed to send password reset email:', emailError);
+    } catch (error) {
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpire = undefined;
+      await user.save({validateBeforeSave: false});
 
-      // Revert the token save since email failed
-      user.resetToken = undefined;
-      user.resetTokenExpiry = undefined;
-      await user.save();
-
-      res.status(500).json({
-        success: false,
-        message: MESSAGES.EMAIL.SEND_ERROR,
-      });
+      return next(new ErrorHandler('Email could not be sent', 500));
     }
-  } catch (error) {
-    next(error);
-  }
-};
+  },
+);
 
-// Reset password (simplified version)
-export const resetPassword: RequestHandler = async (
-  req: Request,
-  res: Response<ApiResponse<null>>,
-  next: NextFunction,
-): Promise<void> => {
-  try {
-    const {email, newPassword} = req.body;
+// Reset Password
+export const resetPassword = catchAsyncErrors(
+  async (req: Request, res: Response, next: NextFunction) => {
+    // Get hashed token
+    const resetPasswordToken = crypto
+      .createHash('sha256')
+      .update(req.params.token)
+      .digest('hex');
 
+    const user = await User.findOne({
+      resetPasswordToken,
+      resetPasswordExpire: {$gt: Date.now()},
+    });
 
-    if (!email || !newPassword) {
-      res.status(400).json({
-        success: false,
-        message: 'Email and new password are required',
-      });
-      return;
-    }
-
-    // Validate password strength
-    if (!passwordSchema.validate(newPassword)) {
-      res.status(400).json({
-        success: false,
-        message: MESSAGES.PASSWORD.INVALID_PASSWORD,
-      });
-      return;
-    }
-
-    
-    const user = await User.findOne({email});
-    console.log(user)
     if (!user) {
-      res.status(404).json({
-        success: false,
-        message: 'User not found',
-      });
-      return;
+      return next(
+        new ErrorHandler('Password reset token is invalid or has expired', 400),
+      );
     }
 
-    // Set the new password - let the User model's pre-save middleware handle hashing
-    user.password = newPassword;
-    console.log(newPassword);
+    if (req.body.password !== req.body.confirmPassword) {
+      return next(new ErrorHandler('Passwords do not match', 400));
+    }
+
+    // Setup new password
+    user.password = req.body.password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+
     await user.save();
 
     res.status(200).json({
       success: true,
       message: 'Password updated successfully',
     });
-  } catch (error) {
-    next(error);
-  }
-};
+  },
+);
 
 // Admin: Get all users
 export const getAllUsers: RequestHandler = async (

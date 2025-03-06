@@ -1,10 +1,13 @@
-import {Request, Response} from 'express';
+import {Request, Response, NextFunction} from 'express';
 import Order from '../models/Order';
 import Cart from '../models/Cart';
 import {Types} from 'mongoose';
 import {IProduct} from '../models/Product';
 import {IUser, UserRole} from '../models/User';
 import crypto from 'crypto';
+import {catchAsyncErrors} from '../middleware/catchAsyncErrors';
+import {EmailService} from '../services/emailService';
+import User from '../models/User';
 
 // Add these interfaces at the top of your file
 interface ICartItem {
@@ -18,6 +21,8 @@ interface ICart {
   items: ICartItem[];
   user: Types.ObjectId;
 }
+
+const emailService = new EmailService();  // Create instance
 
 // Helper function to generate order number
 async function generateOrderNumber(): Promise<string> {
@@ -48,92 +53,120 @@ function generatePaymentId(): string {
 }
 
 // Create a new order
-export const createOrder = async (
-  req: Request,
-  res: Response,
-): Promise<void> => {
-  try {
-    const userId = req.user?._id;
-    const {cartId, shippingAddress, paymentId, orderId, paymentStatus} =
-      req.body;
+export const createOrder = catchAsyncErrors(
+  async (req: Request & { user?: { _id: string } }, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?._id;
+      if (!userId) {
+        res.status(401).json({ success: false, message: 'User not authenticated' });
+        return;
+      }
 
-    if (!userId) {
-      res.status(401).json({
-        success: false,
-        message: 'User not authenticated',
+      // Get user details from database
+      const user = await User.findById(userId);
+      if (!user) {
+        res.status(404).json({ success: false, message: 'User not found' });
+        return;
+      }
+
+      console.log('User making order:', {
+        userId: user._id,
+        email: user.email,
+        name: `${user.firstName} ${user.lastName}`
       });
-      return;
-    }
 
-    const cart = await Cart.findById(cartId).populate<{items: ICartItem[]}>(
-      'items.product',
-    );
-    if (!cart || cart.items.length === 0) {
-      res.status(400).json({
-        success: false,
-        message: 'Cart is empty or not found',
+      const {cartId, shippingAddress, paymentId, orderId, paymentStatus} =
+        req.body;
+
+      const cart = await Cart.findById(cartId).populate<{items: ICartItem[]}>(
+        'items.product',
+      );
+      if (!cart || cart.items.length === 0) {
+        res.status(400).json({
+          success: false,
+          message: 'Cart is empty or not found',
+        });
+        return;
+      }
+
+      // Calculate total amount (just sum of items)
+      const totalAmount = cart.items.reduce(
+        (total, item) => total + item.price * item.quantity,
+        0
+      );
+
+      // Generate order number
+      const orderNumber = await generateOrderNumber();
+
+      // Generate unique payment ID for testing
+      const actualPaymentId = paymentId || generatePaymentId();
+
+      // Create order items from cart items
+      const orderItems = cart.items.map(item => ({
+        productId: item.product._id,
+        quantity: item.quantity,
+        price: item.price,
+      }));
+
+      // Create the order
+      const order = new Order({
+        orderNumber,
+        user: userId,
+        items: orderItems,
+        orderId: orderId,
+        totalAmount,
+        shippingAddress: {
+          ...shippingAddress,
+          phone: shippingAddress.phone.toString(),
+        },
+        payment: {
+          provider: 'paypal',
+          transactionId: actualPaymentId,
+          status: 'completed',
+          paidAmount: totalAmount,
+          paidAt: new Date(),
+        },
+        paymentStatus: paymentStatus,
       });
-      return;
+
+      await order.save();
+
+      // Send order confirmation email to customer
+      console.log('Sending order confirmation to:', user.email);
+      await emailService.sendOrderConfirmationEmail(user.email, {
+        orderNumber: order.orderNumber,
+        orderDate: order.createdAt,
+        items: cart.items,
+        total: order.totalAmount,
+        shippingAddress: order.shippingAddress,
+        siteName: 'Green Phone Shop',
+        year: new Date().getFullYear()
+      });
+
+      console.log('Order confirmation email sent');
+
+      // Send notification to admin
+      await emailService.sendAdminOrderNotificationEmail({
+        orderNumber: order._id,
+        customerName: `${user.firstName} ${user.lastName}`,
+        orderDate: order.createdAt,
+        total: order.totalAmount
+      });
+
+      // Clear the cart after successful order creation
+      await Cart.findByIdAndDelete(cartId);
+
+      res.status(201).json({
+        success: true,
+        message: 'Order created successfully',
+        data: order,
+      });
+    } catch (error: any) {
+      console.error('Error creating order:', error);
+      next(error);
     }
-
-    // Calculate total amount (just sum of items)
-    const totalAmount = cart.items.reduce(
-      (total, item) => total + item.price * item.quantity,
-      0
-    );
-
-    // Generate order number
-    const orderNumber = await generateOrderNumber();
-
-    // Generate unique payment ID for testing
-    const actualPaymentId = paymentId || generatePaymentId();
-
-    // Create order items from cart items
-    const orderItems = cart.items.map(item => ({
-      productId: item.product._id,
-      quantity: item.quantity,
-      price: item.price,
-    }));
-
-    // Create the order
-    const order = new Order({
-      orderNumber,
-      user: userId,
-      items: orderItems,
-      orderId: orderId,
-      totalAmount,
-      shippingAddress: {
-        ...shippingAddress,
-        phone: shippingAddress.phone.toString(),
-      },
-      payment: {
-        provider: 'paypal',
-        transactionId: actualPaymentId,
-        status: 'completed',
-        paidAmount: totalAmount,
-        paidAt: new Date(),
-      },
-      paymentStatus: paymentStatus,
-    });
-
-    await order.save();
-
-    // Clear the cart after successful order creation
-    await Cart.findByIdAndDelete(cartId);
-
-    res.status(201).json({
-      success: true,
-      message: 'Order created successfully',
-      data: order,
-    });
-  } catch (error: any) {
-    res.status(500).json({
-      success: false,
-      message: 'Error creating order',
-      error: error.message,
-    });
   }
-};
+);
 
 // Get all orders for a user
 export const getOrders = async (req: Request, res: Response): Promise<void> => {

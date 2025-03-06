@@ -76,4 +76,7 @@ router.get(
 // Update reset password route to not require token
 router.post('/reset-password', userController.resetPassword);
 
+router.post('/password/forgot', userController.forgotPassword);
+router.put('/password/reset/:token', userController.resetPassword);
+
 export default router;

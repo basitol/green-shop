@@ -15,15 +15,36 @@ router.get('/', getAllCategories);
 router.get('/:id', getCategory);
 
 // Protected routes (admin only)
-router.post('/', isAuthenticatedUser, authorizeRoles('admin'), createCategory);
+router.post('/', 
+  (req, res, next) => {
+    console.log('Auth Headers:', req.headers.authorization);
+    console.log('Cookies:', req.cookies);
+    next();
+  },
+  isAuthenticatedUser, 
+  authorizeRoles('admin'), 
+  createCategory
+);
+
 router.put(
   '/:id',
+  (req, res, next) => {
+    console.log('Auth Headers:', req.headers.authorization);
+    console.log('Cookies:', req.cookies);
+    next();
+  },
   isAuthenticatedUser,
   authorizeRoles('admin'),
   updateCategory,
 );
+
 router.delete(
   '/:id',
+  (req, res, next) => {
+    console.log('Auth Headers:', req.headers.authorization);
+    console.log('Cookies:', req.cookies);
+    next();
+  },
   isAuthenticatedUser,
   authorizeRoles('admin'),
   deleteCategory,

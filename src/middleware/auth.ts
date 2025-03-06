@@ -12,13 +12,15 @@ interface JwtPayload {
 // Check if user is authenticated
 export const isAuthenticatedUser = catchAsyncErrors(
   async (req: Request, res: Response, next: NextFunction) => {
-    const {token} = req.cookies;
+    const bearerToken = req.headers.authorization;
 
-    if (!token) {
+    if (!bearerToken || !bearerToken.startsWith('Bearer ')) {
       return next(
-        createError.unauthorized('Please login to access this resource'),
+        createError.unauthorized('Please provide a valid bearer token'),
       );
     }
+
+    const token = bearerToken.split(' ')[1];
 
     try {
       const decoded = jwt.verify(

@@ -6,77 +6,73 @@
         body {
             font-family: Arial, sans-serif;
             line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
         }
         .container {
-            background-color: #f9f9f9;
-            border-radius: 5px;
+            max-width: 600px;
+            margin: 20px auto;
             padding: 20px;
-            margin-top: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 2px solid #eee;
+        }
+        .content {
+            padding: 20px 0;
         }
         .order-details {
-            margin: 20px 0;
+            background-color: #f8f8f8;
             padding: 15px;
-            background-color: #fff;
-            border-radius: 5px;
-            border: 1px solid #ddd;
-        }
-        .product-item {
-            padding: 10px 0;
-            border-bottom: 1px solid #eee;
-        }
-        .total {
-            margin-top: 15px;
-            font-weight: bold;
+            border-radius: 4px;
+            margin: 15px 0;
         }
         .footer {
-            margin-top: 20px;
-            font-size: 12px;
+            text-align: center;
+            padding-top: 20px;
+            border-top: 2px solid #eee;
             color: #666;
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>Order Confirmation</h2>
-        <p>Dear {{customerName}},</p>
-        <p>Thank you for your order at {{siteName}}. Your order has been confirmed and is being processed.</p>
-        
-        <div class="order-details">
-            <h3>Order Details</h3>
-            <p>Order Number: {{orderNumber}}</p>
-            <p>Order Date: {{orderDate}}</p>
-            
-            <h4>Items Ordered:</h4>
-            {{#each items}}
-            <div class="product-item">
-                <p>{{name}}</p>
-                <p>Quantity: {{quantity}}</p>
-                <p>Price: ${{price}}</p>
-            </div>
-            {{/each}}
-            
-            <div class="total">
-                <p>Subtotal: ${{subtotal}}</p>
-                <p>Shipping: ${{shipping}}</p>
-                <p>Total: ${{total}}</p>
-            </div>
+        <div class="header">
+            <h1>Order Confirmation</h1>
         </div>
-        
-        <div class="shipping-info">
-            <h3>Shipping Information</h3>
-            <p>{{shippingAddress}}</p>
-            <p>Estimated Delivery: {{estimatedDelivery}}</p>
+        <div class="content">
+            <p>Thank you for your order!</p>
+            
+            <div class="order-details">
+                <p><strong>Order Number:</strong> {{orderNumber}}</p>
+                <p><strong>Order Date:</strong> {{orderDate}}</p>
+                <p><strong>Total Amount:</strong> ${{total}}</p>
+                
+                <h3>Items Ordered:</h3>
+                {{#each items}}
+                <div style="margin-bottom: 10px;">
+                    <p>{{this.product.name}} - Quantity: {{this.quantity}}</p>
+                    <p>Price: ${{this.price}}</p>
+                </div>
+                {{/each}}
+
+                <h3>Shipping Address:</h3>
+                <p>{{shippingAddress.street}}</p>
+                <p>{{shippingAddress.city}}, {{shippingAddress.state}} {{shippingAddress.zipCode}}</p>
+                <p>{{shippingAddress.country}}</p>
+            </div>
+
+            <p>We'll notify you when your order ships.</p>
         </div>
-        
-        <p>You can track your order status by logging into your account.</p>
-        
         <div class="footer">
-            <p>If you have any questions about your order, please contact our customer service.</p>
-            <p>This is an automated email from {{siteName}}. Please do not reply to this email.</p>
+            <p>Thank you for shopping with {{siteName}}!</p>
+            <p>&copy; {{year}} {{siteName}}. All rights reserved.</p>
         </div>
     </div>
 </body>

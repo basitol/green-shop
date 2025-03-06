@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import path from 'path';
-import cookieParser from 'cookie-parser';
+// import cookieParser from 'cookie-parser';
 
 // Load environment variables first
 dotenv.config({path: path.join(__dirname, '../.env')});
@@ -29,7 +29,7 @@ const corsOptions = {
 // Middleware
 app.use(cors(corsOptions));
 app.use(express.json());
-app.use(cookieParser());
+// app.use(cookieParser());
 app.use(express.urlencoded({extended: true}));
 
 // File upload middleware

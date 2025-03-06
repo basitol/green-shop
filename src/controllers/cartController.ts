@@ -391,9 +391,9 @@ export const clearCart: RequestHandler = async (
       {user: req.user._id},
       {
         items: [],
-        subtotal: 0,  // Reset subtotal
-        shipping: 0,  // Reset shipping
-        total: 0      // Reset total
+        subtotal: 0, // Reset subtotal
+        shipping: 0, // Reset shipping
+        total: 0, // Reset total
       },
       {new: true},
     );
