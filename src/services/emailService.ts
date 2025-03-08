@@ -29,15 +29,21 @@ export class EmailService {
 
   constructor() {
     console.log('Initializing EmailService with Gmail...');
-
+    
     this.isDevelopment = process.env.NODE_ENV !== 'production';
+    
+    // Check for required environment variables
+    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+      console.error('Missing Gmail credentials in environment variables');
+      throw new Error('Email configuration is incomplete');
+    }
 
     // Initialize Gmail SMTP transporter
     this.transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
         user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD, // This needs to be an App Password
+        pass: process.env.GMAIL_APP_PASSWORD,
       },
     });
 
@@ -45,6 +51,10 @@ export class EmailService {
     this.transporter.verify(error => {
       if (error) {
         console.error('Gmail connection error:', error);
+        console.log('Gmail credentials:', {
+          user: process.env.GMAIL_USER,
+          pass: process.env.GMAIL_APP_PASSWORD?.substring(0, 4) + '****' // Log partially hidden password
+        });
       } else {
         console.log('Gmail server is ready to send emails');
       }

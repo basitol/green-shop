@@ -79,4 +79,7 @@ router.post('/reset-password', userController.resetPassword);
 router.post('/password/forgot', userController.forgotPassword);
 router.put('/password/reset/:token', userController.resetPassword);
 
+// Admin creation route
+router.post('/admin/register', userController.createAdmin);
+
 export default router;

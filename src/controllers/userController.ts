@@ -139,7 +139,7 @@ export const register: RequestHandler = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const {firstName, lastName, email, password} = req.body;
+    const {firstName, lastName, email, password, adminToken} = req.body;
 
     // Validate required fields
     if (!firstName || !lastName || !email || !password) {
@@ -150,6 +150,27 @@ export const register: RequestHandler = async (
         error: 'VALIDATION_ERROR',
       });
       return;
+    }
+
+    // Determine user role - check for admin token
+    let role: UserRole = 'user';
+
+    if (adminToken) {
+      try {
+        // Verify admin token
+        const decoded = jwt.verify(
+          adminToken,
+          process.env.ADMIN_CREATION_SECRET as string,
+        );
+
+        if (decoded && (decoded as any).purpose === 'admin_creation') {
+          role = 'admin';
+          console.log('Admin account creation authorized');
+        }
+      } catch (error) {
+        console.error('Invalid admin token:', error);
+        // Continue with user registration, just not as admin
+      }
     }
 
     // Validate email format
@@ -186,13 +207,13 @@ export const register: RequestHandler = async (
       return;
     }
 
-    // Create new user
+    // Create new user with determined role
     const user = new User({
       firstName,
       lastName,
       email,
       password,
-      role: 'user',
+      role, // Use the determined role
       isVerified: true,
     });
 
@@ -790,5 +811,122 @@ export const updateUserRole: RequestHandler = async (
     });
   } catch (error) {
     next(error);
+  }
+};
+
+// Create admin user (requires admin token)
+export const createAdmin: RequestHandler = async (
+  req: Request,
+  res: Response<ApiResponse<UserResponse>>,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const {firstName, lastName, email, password, adminToken} = req.body;
+
+    // Validate required fields
+    if (!firstName || !lastName || !email || !password || !adminToken) {
+      res.status(400).json({
+        success: false,
+        message: 'All fields and admin token are required',
+        error: 'VALIDATION_ERROR',
+      });
+      return;
+    }
+
+    // Validate admin token
+    try {
+      const decoded = jwt.verify(
+        adminToken,
+        process.env.ADMIN_CREATION_SECRET as string,
+      );
+
+      if (
+        !(decoded as any).purpose ||
+        (decoded as any).purpose !== 'admin_creation'
+      ) {
+        res.status(401).json({
+          success: false,
+          message: 'Invalid admin creation token',
+          error: 'UNAUTHORIZED',
+        });
+        return;
+      }
+    } catch (error) {
+      res.status(401).json({
+        success: false,
+        message: 'Invalid or expired admin creation token',
+        error: 'UNAUTHORIZED',
+      });
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      res.status(400).json({
+        success: false,
+        message: 'Please provide a valid email address.',
+        error: 'INVALID_EMAIL',
+      });
+      return;
+    }
+
+    // Validate password strength
+    if (!passwordSchema.validate(password)) {
+      res.status(400).json({
+        success: false,
+        message:
+          'Password must be at least 8 characters long and include uppercase, lowercase, number, and special character.',
+        error: 'WEAK_PASSWORD',
+      });
+      return;
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({email});
+    if (existingUser) {
+      res.status(409).json({
+        success: false,
+        message: 'An account with this email already exists.',
+        error: 'EMAIL_EXISTS',
+      });
+      return;
+    }
+
+    // Create admin user
+    const user = new User({
+      firstName,
+      lastName,
+      email,
+      password,
+      role: 'admin',
+      isVerified: true,
+    });
+
+    await user.save();
+
+    // Send welcome email
+    try {
+      await emailService.sendWelcomeEmail(email, `${firstName} ${lastName}`);
+    } catch (emailError) {
+      console.error('Failed to send welcome email:', emailError);
+      // Continue with registration even if email fails
+    }
+
+    const {password: _, ...userWithoutPassword} = user.toObject();
+
+    res.status(201).json({
+      success: true,
+      data: userWithoutPassword as UserResponse,
+      message: `Admin account for ${firstName} created successfully.`,
+    });
+  } catch (error) {
+    console.error('Admin creation error:', error);
+    res.status(500).json({
+      success: false,
+      message:
+        'An unexpected error occurred during admin creation. Please try again later.',
+      error: 'SERVER_ERROR',
+    });
   }
 };
