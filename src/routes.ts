@@ -11,6 +11,7 @@ import userRoutes from './routes/userRoutes';
 import {authenticate, authorizeAdmin} from './middleware/authMiddleware';
 import categoryRoutes from './routes/categoryRoutes';
 import favoriteRoutes from './routes/favoriteRoutes';
+import discountRoutes from './routes/discountRoutes'; // Import discount routes
 const router: Router = express.Router();
 
 // Update the AuthenticatedRequest type definition to include 'id' and 'role'
@@ -108,5 +109,7 @@ router.use('/users', userRoutes);
 router.use('/categories', categoryRoutes);
 // Favorite routes
 router.use('/favorites', favoriteRoutes);
+// Discount routes
+router.use('/discounts', discountRoutes);
 
 export default router;

@@ -22,7 +22,7 @@ interface ICart {
   user: Types.ObjectId;
 }
 
-const emailService = new EmailService();  // Create instance
+const emailService = new EmailService(); // Create instance
 
 // Helper function to generate order number
 async function generateOrderNumber(): Promise<string> {
@@ -54,25 +54,31 @@ function generatePaymentId(): string {
 
 // Create a new order
 export const createOrder = catchAsyncErrors(
-  async (req: Request & { user?: { _id: string } }, res: Response, next: NextFunction) => {
+  async (
+    req: Request & {user?: {_id: string}},
+    res: Response,
+    next: NextFunction,
+  ) => {
     try {
       const userId = req.user?._id;
       if (!userId) {
-        res.status(401).json({ success: false, message: 'User not authenticated' });
+        res
+          .status(401)
+          .json({success: false, message: 'User not authenticated'});
         return;
       }
 
       // Get user details from database
       const user = await User.findById(userId);
       if (!user) {
-        res.status(404).json({ success: false, message: 'User not found' });
+        res.status(404).json({success: false, message: 'User not found'});
         return;
       }
 
       console.log('User making order:', {
         userId: user._id,
         email: user.email,
-        name: `${user.firstName} ${user.lastName}`
+        name: `${user.firstName} ${user.lastName}`,
       });
 
       const {cartId, shippingAddress, paymentId, orderId, paymentStatus} =
@@ -89,11 +95,18 @@ export const createOrder = catchAsyncErrors(
         return;
       }
 
-      // Calculate total amount (just sum of items)
-      const totalAmount = cart.items.reduce(
+      // Calculate subtotal (original amount before discount)
+      const subtotal = cart.items.reduce(
         (total, item) => total + item.price * item.quantity,
-        0
+        0,
       );
+
+      // Get discount information from the cart
+      const discountCode = cart.discountCode || null;
+      const discountAmount = cart.discountAmount || 0;
+
+      // Calculate total amount (after applying discount)
+      const totalAmount = subtotal - discountAmount;
 
       // Generate order number
       const orderNumber = await generateOrderNumber();
@@ -114,7 +127,10 @@ export const createOrder = catchAsyncErrors(
         user: userId,
         items: orderItems,
         orderId: orderId,
-        totalAmount,
+        subtotal, // Save original amount before discount
+        discountCode, // Save the discount code used
+        discountAmount, // Save the discount amount applied
+        totalAmount, // Save the final amount after discount
         shippingAddress: {
           ...shippingAddress,
           phone: shippingAddress.phone.toString(),
@@ -138,9 +154,12 @@ export const createOrder = catchAsyncErrors(
         orderDate: order.createdAt,
         items: cart.items,
         total: order.totalAmount,
+        subtotal: order.subtotal,
+        discountAmount: order.discountAmount,
+        discountCode: order.discountCode,
         shippingAddress: order.shippingAddress,
         siteName: 'Green Phone Shop',
-        year: new Date().getFullYear()
+        year: new Date().getFullYear(),
       });
 
       console.log('Order confirmation email sent');
@@ -150,7 +169,7 @@ export const createOrder = catchAsyncErrors(
         orderNumber: order._id,
         customerName: `${user.firstName} ${user.lastName}`,
         orderDate: order.createdAt,
-        total: order.totalAmount
+        total: order.totalAmount,
       });
 
       // Clear the cart after successful order creation
@@ -165,7 +184,7 @@ export const createOrder = catchAsyncErrors(
       console.error('Error creating order:', error);
       next(error);
     }
-  }
+  },
 );
 
 // Get all orders for a user

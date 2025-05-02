@@ -11,6 +11,8 @@ interface ICart extends Document {
   items: ICartItem[];
   subtotal: number; // To store the subtotal of the cart
   shipping: number; // To store shipping cost (0 for now)
+  discountCode: string; // Store the applied discount code
+  discountAmount: number; // Store the calculated discount amount
   total: number; // To store the total cost
 }
 
@@ -25,7 +27,9 @@ const CartSchema: Schema = new Schema({
   ],
   subtotal: {type: Number, required: true, default: 0}, // Calculated field
   shipping: {type: Number, required: true, default: 0}, // Free shipping for now
-  total: {type: Number, required: true, default: 0}, // Calculated total (subtotal + shipping)
+  discountCode: {type: String, default: null}, // Applied discount code
+  discountAmount: {type: Number, default: 0}, // Calculated discount amount
+  total: {type: Number, required: true, default: 0}, // Calculated total (subtotal + shipping - discount)
 });
 
 // Middleware to calculate subtotal and total price before saving the cart
@@ -36,7 +40,8 @@ CartSchema.pre('save', function (next) {
     (acc, item) => acc + item.quantity * item.price,
     0,
   );
-  cart.total = cart.subtotal + cart.shipping; // Total = Subtotal + Shipping
+  // Total = Subtotal + Shipping - Discount
+  cart.total = cart.subtotal + cart.shipping - cart.discountAmount;
 
   next();
 });

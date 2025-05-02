@@ -10,6 +10,9 @@ export interface IOrder extends Document {
   orderNumber: string;
   user: Types.ObjectId;
   items: IOrderItem[];
+  subtotal: number;
+  discountCode: string | null;
+  discountAmount: number;
   totalAmount: number;
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
   shippingAddress: {
@@ -54,6 +57,9 @@ const OrderSchema = new Schema(
         price: {type: Number, required: true},
       },
     ],
+    subtotal: {type: Number, required: true},
+    discountCode: {type: String, default: null},
+    discountAmount: {type: Number, default: 0},
     totalAmount: {type: Number, required: true},
     status: {
       type: String,

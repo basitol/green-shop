@@ -1,79 +1,65 @@
-<!DOCTYPE html>
 <html>
-<head>
-    <meta charset="utf-8">
+  <head>
+    <meta charset='utf-8' />
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
-        }
-        .container {
-            max-width: 600px;
-            margin: 20px auto;
-            padding: 20px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .header {
-            text-align: center;
-            padding: 20px 0;
-            border-bottom: 2px solid #eee;
-        }
-        .content {
-            padding: 20px 0;
-        }
-        .order-details {
-            background-color: #f8f8f8;
-            padding: 15px;
-            border-radius: 4px;
-            margin: 15px 0;
-        }
-        .footer {
-            text-align: center;
-            padding-top: 20px;
-            border-top: 2px solid #eee;
-            color: #666;
-            font-size: 14px;
-        }
+      body { font-family: Arial, sans-serif; line-height: 1.6; margin: 0;
+      padding: 0; background-color: #f4f4f4; } .container { max-width: 600px;
+      margin: 20px auto; padding: 20px; background: white; border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1); } .header { text-align: center;
+      padding: 20px 0; border-bottom: 2px solid #eee; } .content { padding: 20px
+      0; } .order-details { background-color: #f8f8f8; padding: 15px;
+      border-radius: 4px; margin: 15px 0; } .price-breakdown { border-top: 1px
+      solid #ddd; padding-top: 10px; margin-top: 15px; } .discount { color:
+      #2e8b57; font-weight: bold; } .total { font-size: 18px; font-weight: bold;
+      margin-top: 10px; } .footer { text-align: center; padding-top: 20px;
+      border-top: 2px solid #eee; color: #666; font-size: 14px; }
     </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Order Confirmation</h1>
-        </div>
-        <div class="content">
-            <p>Thank you for your order!</p>
-            
-            <div class="order-details">
-                <p><strong>Order Number:</strong> {{orderNumber}}</p>
-                <p><strong>Order Date:</strong> {{orderDate}}</p>
-                <p><strong>Total Amount:</strong> ${{total}}</p>
-                
-                <h3>Items Ordered:</h3>
-                {{#each items}}
-                <div style="margin-bottom: 10px;">
-                    <p>{{this.product.name}} - Quantity: {{this.quantity}}</p>
-                    <p>Price: ${{this.price}}</p>
-                </div>
-                {{/each}}
+  </head>
+  <body>
+    <div class='container'>
+      <div class='header'>
+        <h1>Order Confirmation</h1>
+      </div>
+      <div class='content'>
+        <p>Thank you for your order!</p>
 
-                <h3>Shipping Address:</h3>
-                <p>{{shippingAddress.street}}</p>
-                <p>{{shippingAddress.city}}, {{shippingAddress.state}} {{shippingAddress.zipCode}}</p>
-                <p>{{shippingAddress.country}}</p>
+        <div class='order-details'>
+          <p><strong>Order Number:</strong> {{orderNumber}}</p>
+          <p><strong>Order Date:</strong> {{orderDate}}</p>
+
+          <h3>Items Ordered:</h3>
+          {{#each items}}
+            <div style='margin-bottom: 10px;'>
+              <p>{{this.product.name}} - Quantity: {{this.quantity}}</p>
+              <p>Price: ${{this.price}}</p>
             </div>
+          {{/each}}
 
-            <p>We'll notify you when your order ships.</p>
+          <div class='price-breakdown'>
+            <p><strong>Subtotal:</strong> ${{subtotal}}</p>
+
+            {{#if discountCode}}
+              <p class='discount'><strong>Discount ({{discountCode}}):</strong>
+                -${{discountAmount}}</p>
+            {{/if}}
+
+            <p class='total'><strong>Total Amount:</strong> ${{total}}</p>
+          </div>
+
+          <h3>Shipping Address:</h3>
+          <p>{{shippingAddress.street}}</p>
+          <p>{{shippingAddress.city}},
+            {{shippingAddress.state}}
+            {{shippingAddress.zipCode}}</p>
+          <p>{{shippingAddress.country}}</p>
         </div>
-        <div class="footer">
-            <p>Thank you for shopping with {{siteName}}!</p>
-            <p>&copy; {{year}} {{siteName}}. All rights reserved.</p>
-        </div>
+
+        <p>We'll notify you when your order ships.</p>
+      </div>
+      <div class='footer'>
+        <p>Thank you for shopping with {{siteName}}!</p>
+        <p>&copy; {{year}} {{siteName}}. All rights reserved.</p>
+      </div>
     </div>
-</body>
+  </body>
 </html>
