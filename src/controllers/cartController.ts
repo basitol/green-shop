@@ -278,7 +278,21 @@ export const addToCart: RequestHandler = async (
         res.status(404).json({success: false, message: 'Product not found'});
         return;
       }
-      cart.items.push({product: productId, quantity, price: product.price});
+
+      // Check if the product has a valid discount
+      const now = new Date();
+      const hasValidDiscount =
+        product.discountPrice &&
+        (!product.discountStartDate || now >= product.discountStartDate) &&
+        (!product.discountEndDate || now <= product.discountEndDate);
+
+      // Use discounted price if valid, otherwise use regular price
+      const priceToUse =
+        hasValidDiscount && product.discountPrice
+          ? product.discountPrice
+          : product.price;
+
+      cart.items.push({product: productId, quantity, price: priceToUse});
     }
 
     await cart.save();
