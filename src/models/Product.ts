@@ -53,6 +53,9 @@ export interface IProduct extends Document {
   color: string;
   storage: string;
   price: number;
+  discountPrice?: number | null; // Discounted price if any
+  discountStartDate?: Date | null;
+  discountEndDate?: Date | null;
   stock: number;
   rating: number;
   totalReviews: number;
@@ -70,6 +73,9 @@ const ProductSchema: Schema = new Schema(
     color: {type: String, required: true},
     storage: {type: String, required: false},
     price: {type: Number, required: true},
+    discountPrice: {type: Number, default: null},
+    discountStartDate: {type: Date, default: null},
+    discountEndDate: {type: Date, default: null},
     stock: {type: Number, required: true},
     rating: {type: Number, default: 0},
     totalReviews: {type: Number, default: 0},
