@@ -9,7 +9,14 @@ import {ParsedQs} from 'qs';
 import {Category} from '../models/Category';
 import {catchAsyncErrors} from '../middleware/catchAsyncErrors';
 
+// Product type based on Mongoose schema
 type ProductType = InferSchemaType<typeof Product.schema>;
+
+// Enhanced product type with effective price
+interface EnhancedProduct extends Omit<IProduct, 'toObject'> {
+  effectivePrice: number;
+  onSale: boolean;
+}
 
 interface ApiResponse<T> {
   success: boolean;
@@ -29,10 +36,30 @@ interface RequestWithParams<P extends ParamsDictionary>
 type ProductParams = ParamsDictionary & {
   id: string;
 };
+
+// Helper function to calculate effective price
+const getEffectivePrice = (
+  product: any,
+): {effectivePrice: number; onSale: boolean} => {
+  const now = new Date();
+  const hasValidDiscount =
+    product.discountPrice &&
+    (!product.discountStartDate || now >= product.discountStartDate) &&
+    (!product.discountEndDate || now <= product.discountEndDate);
+
+  return {
+    effectivePrice:
+      hasValidDiscount && product.discountPrice
+        ? product.discountPrice
+        : product.price,
+    onSale: hasValidDiscount && product.discountPrice ? true : false,
+  };
+};
+
 // Get all products
 export const getAllProducts: RequestHandler = async (
   req: Request,
-  res: Response<ApiResponse<ProductType[]>>,
+  res: Response<ApiResponse<any>>,
   next: NextFunction,
 ) => {
   try {
@@ -40,9 +67,21 @@ export const getAllProducts: RequestHandler = async (
       'category',
       'name description',
     );
+
+    // Add effectivePrice to each product
+    const productsWithEffectivePrice = products.map(product => {
+      const {effectivePrice, onSale} = getEffectivePrice(product);
+      const productObj = product.toObject();
+      return {
+        ...productObj,
+        effectivePrice,
+        onSale,
+      };
+    });
+
     res.status(200).json({
       success: true,
-      data: products,
+      data: productsWithEffectivePrice,
       message: 'Products retrieved successfully',
     });
   } catch (error) {
@@ -58,7 +97,7 @@ export const getAllProducts: RequestHandler = async (
 // Get product by ID
 export const getProductById: RequestHandler = async (
   req: Request,
-  res: Response<ApiResponse<ProductType>>,
+  res: Response<ApiResponse<any>>,
   next: NextFunction,
 ) => {
   try {
@@ -67,9 +106,19 @@ export const getProductById: RequestHandler = async (
       res.status(404).json({success: false, message: 'Product not found'});
       return;
     }
+
+    // Add effectivePrice to product
+    const {effectivePrice, onSale} = getEffectivePrice(product);
+    const productObj = product.toObject();
+    const productWithEffectivePrice = {
+      ...productObj,
+      effectivePrice,
+      onSale,
+    };
+
     res.status(200).json({
       success: true,
-      data: product,
+      data: productWithEffectivePrice,
       message: 'Product retrieved successfully',
     });
   } catch (error) {
@@ -88,8 +137,18 @@ export const createProduct = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const {name, description, color, storage, price, stock, category} =
-      req.body;
+    const {
+      name,
+      description,
+      color,
+      storage,
+      price,
+      discountPrice,
+      discountStartDate,
+      discountEndDate,
+      stock,
+      category,
+    } = req.body;
 
     // Verify category exists
     const categoryExists = await Category.findById(category);
@@ -162,6 +221,12 @@ export const createProduct = async (
       mainImage: mainImageUpload.secure_url,
       images,
       category,
+      // Add discount fields if provided
+      ...(discountPrice && {discountPrice: parseFloat(discountPrice)}),
+      ...(discountStartDate && {
+        discountStartDate: new Date(discountStartDate),
+      }),
+      ...(discountEndDate && {discountEndDate: new Date(discountEndDate)}),
     });
 
     await product.save();
@@ -183,13 +248,38 @@ export const createProduct = async (
 
 export const updateProduct: RequestHandler = async (
   req: Request,
-  res: Response<ApiResponse<ProductType>>,
+  res: Response<ApiResponse<any>>,
   next: NextFunction,
 ) => {
   try {
+    const {
+      price,
+      discountPrice,
+      discountStartDate,
+      discountEndDate,
+      ...otherFields
+    } = req.body;
+
+    // Process numeric and date fields
+    const updateData = {
+      ...otherFields,
+      ...(price !== undefined && {price: parseFloat(price)}),
+      ...(discountPrice !== undefined && {
+        discountPrice: discountPrice ? parseFloat(discountPrice) : null,
+      }),
+      ...(discountStartDate !== undefined && {
+        discountStartDate: discountStartDate
+          ? new Date(discountStartDate)
+          : null,
+      }),
+      ...(discountEndDate !== undefined && {
+        discountEndDate: discountEndDate ? new Date(discountEndDate) : null,
+      }),
+    };
+
     const updatedProduct = await Product.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updateData,
       {new: true},
     );
 
@@ -198,9 +288,17 @@ export const updateProduct: RequestHandler = async (
       return;
     }
 
+    // Add effective price calculation to response
+    const {effectivePrice, onSale} = getEffectivePrice(updatedProduct);
+    const productWithEffectivePrice = {
+      ...updatedProduct.toObject(),
+      effectivePrice,
+      onSale,
+    };
+
     res.status(200).json({
       success: true,
-      data: updatedProduct,
+      data: productWithEffectivePrice,
       message: 'Product updated successfully',
     });
   } catch (error) {
