@@ -39,6 +39,10 @@ router.delete(
 
 // Product routes
 router.get('/products', productController.getAllProducts);
+router.get(
+  '/products/category/:categoryId',
+  productController.getProductsByCategory,
+);
 router.get('/products/:id', productController.getProductById);
 // In your routes file
 router.post(
@@ -64,10 +68,6 @@ router.delete(
   authenticate,
   authorizeAdmin,
   productController.deleteProduct,
-);
-router.get(
-  '/products/category/:categoryId',
-  productController.getProductsByCategory,
 );
 
 // Cart routes
