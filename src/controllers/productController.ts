@@ -8,14 +8,16 @@ import {ParamsDictionary} from 'express-serve-static-core';
 import {ParsedQs} from 'qs';
 import {Category} from '../models/Category';
 import {catchAsyncErrors} from '../middleware/catchAsyncErrors';
+import {Document} from 'mongoose';
 
 // Product type based on Mongoose schema
 type ProductType = InferSchemaType<typeof Product.schema>;
 
 // Enhanced product type with effective price
-interface EnhancedProduct extends Omit<IProduct, 'toObject'> {
+interface EnhancedProduct extends Omit<ProductType, keyof Document> {
   effectivePrice: number;
   onSale: boolean;
+  _id: string;
 }
 
 interface ApiResponse<T> {
@@ -76,7 +78,7 @@ export const getAllProducts: RequestHandler = async (
         ...productObj,
         effectivePrice,
         onSale,
-      };
+      } as EnhancedProduct;
     });
 
     res.status(200).json({
@@ -114,7 +116,7 @@ export const getProductById: RequestHandler = async (
       ...productObj,
       effectivePrice,
       onSale,
-    };
+    } as EnhancedProduct;
 
     res.status(200).json({
       success: true,
@@ -294,7 +296,7 @@ export const updateProduct: RequestHandler = async (
       ...updatedProduct.toObject(),
       effectivePrice,
       onSale,
-    };
+    } as EnhancedProduct;
 
     res.status(200).json({
       success: true,
@@ -481,7 +483,7 @@ export const submitReview: RequestHandler = async (
 
 // Add this new function to get products by category
 export const getProductsByCategory = catchAsyncErrors(
-  async (req: Request, res: Response<ApiResponse<ProductType[]>>) => {
+  async (req: Request, res: Response<ApiResponse<EnhancedProduct[]>>) => {
     try {
       const categoryId = req.params.categoryId;
       const {sort, minPrice, maxPrice} = req.query;
@@ -515,9 +517,20 @@ export const getProductsByCategory = catchAsyncErrors(
       // Execute query with category population
       const products = await query.populate('category', 'name description');
 
+      // Add effectivePrice to product
+      const productsWithEffectivePrice = products.map(product => {
+        const {effectivePrice, onSale} = getEffectivePrice(product);
+        const productObj = product.toObject();
+        return {
+          ...productObj,
+          effectivePrice,
+          onSale,
+        } as EnhancedProduct;
+      });
+
       res.status(200).json({
         success: true,
-        data: products,
+        data: productsWithEffectivePrice,
         message: `Products in category: ${category.name}`,
       });
     } catch (error) {
